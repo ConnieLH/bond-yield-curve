@@ -71,11 +71,11 @@ jobs:
       - name: Validate data files
         if: steps.data_mode.outputs.run_data_update == 'true'
         run: |
-          for f in data.json data_cdb.json data_gov_ytm.json data_cdb_ytm.json data_*.json data_makeup_weekend_audit.json life_discount.json preset_model_data.js summary.json data/predictions.json; do
+          for f in data/*.json assets/preset_model_data.js; do
             if [ -f "$f" ]; then
               SIZE=$(wc -c < "$f")
               echo "$f size: $SIZE bytes"
-              if [ "$SIZE" -lt 100 ] && [ "$f" != "summary.json" ] && [ "$f" != "data_makeup_weekend_audit.json" ]; then
+              if [ "$SIZE" -lt 100 ] && [ "$f" != "data/summary.json" ] && [ "$f" != "data/data_makeup_weekend_audit.json" ]; then
                 echo "Invalid data file: $f is smaller than 100 bytes"
                 exit 1
               fi
@@ -87,7 +87,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data.json data_cdb.json data_gov_ytm.json data_cdb_ytm.json data_*.json data_makeup_weekend_audit.json life_discount.json preset_model_data.js summary.json data/predictions.json 2>/dev/null || git add data.json || echo "No data files to add"
+          git add data/*.json assets/preset_model_data.js
 
           if git diff --cached --quiet; then
             echo "No data changes. Checking whether keepalive commit is needed..."

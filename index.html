@@ -8,6 +8,8 @@
     </script>
     <script src="assets/xlsx.full.min.js">
     </script>
+    <link rel="stylesheet" href="assets/ma-analysis.css">
+    <script src="assets/ma-analysis.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Segoe UI', Roboto, system-ui, sans-serif; background: #f0f4f8; padding: 20px; color: #1a2332; }
@@ -120,7 +122,7 @@
         .play-btn:hover { background: #12345a; }
         .play-btn.paused { background: #27ae60; }
         .play-btn.paused:hover { background: #1e8449; }
-        @media (max-width: 1024px) { .grid-2, .premium-ma-grid, .premium-card-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 1024px) { .grid-2, .premium-card-grid { grid-template-columns: 1fr; } }
         @media (max-width: 900px) { .header-card { grid-template-columns: 1fr; } .header-actions { grid-column: 1; grid-row: 2; justify-content: flex-start; } .bond-selector { grid-row: 3; } .subtitle { grid-row: 4; } h1 { white-space: normal; } }
         @media (max-width: 640px) { body { padding: 12px; } .card { padding: 14px; } .chart-box { height: 220px; } .chart-box.tall { height: 260px; } .table-wrap { font-size: 12px; } .table-wrap th, .table-wrap td { padding: 5px 6px; } .upload-area { width: 100%; justify-content: flex-start; flex-wrap: wrap; } .date-selector select { max-width: 120px; } .metrics-row { gap: 8px 16px; padding: 8px 12px; } .metric-value { font-size: 16px; } .dash-terms { grid-template-columns: repeat(2, 1fr); gap: 6px; } .term-cell { padding: 10px 2px; } .term-val { font-size: clamp(14px, 3.6vw, 18px); } .term-label { font-size: 11px; margin-bottom: 4px; } .term-chg { font-size: clamp(9px, 2.6vw, 12px); margin-top: 4px; } }
         @media (max-width: 380px) { .dash-terms { grid-template-columns: repeat(2, 1fr); } .term-val { font-size: clamp(13px, 4.2vw, 17px); } }
@@ -133,10 +135,6 @@
         .diff-col.positive { color: #c0392b; }
         .diff-col.negative { color: #27ae60; }
         .diff-col.flat { color: #888; }
-        .premium-ma-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: stretch; margin-top: 20px; }
-        .premium-ma-card { width: 100%; min-width: 0; display: flex; flex-direction: column; }
-        .premium-ma-card .chart-box { height: 360px; flex: 0 0 auto; }
-        .premium-ma-card .table-wrap { max-height: 260px; overflow: auto; margin-top: 12px; }
         .ma-table-controls { margin-top: 12px; margin-bottom: 0; }
         .premium-section { margin-bottom: 20px; }
         .premium-section-head { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: none; background: #1f4a7a; color: #fff; border-radius: 12px; padding: 12px 16px; font-size: 16px; font-weight: 700; cursor: pointer; }
@@ -481,6 +479,44 @@
             </div>
         </div>
 
+        <section id="maAnalysis" class="ma-analysis" aria-label="即期收益率移动平均分析">
+            <div class="card">
+                <div class="card-title ma-settings-title"><span>移动平均 · 曲线设置</span><div class="ma-settings-actions"><label for="maDateSelect">日期</label><select id="maDateSelect" aria-label="移动平均共享日期"></select><button type="button" id="maAddCurve" class="ma-add">＋ 添加曲线</button></div></div>
+                <p class="ma-notice">两个图共享以下设置。MA1 = 当日即期收益率；MAx = 截至该日最近 x 条原始即期收益率记录的算术平均，包含当日。按数据记录数计算，完整窗口不足时留空并提示。</p>
+                <p class="ma-notice">本区固定使用即期曲线，独立于上方其他图表的口径选择。期限缺失时留空，不补值、不延伸；差值为曲线N−曲线1（bp）。</p>
+                <p class="ma-notice">日期统一控制左图及其表格的截至日、右图的观察日。</p>
+                <div id="maCurveSettings"></div>
+            </div>
+            <div class="ma-analysis-grid">
+                <div class="card ma-analysis-card">
+                    <div class="card-title"><span>📊 移动平均 · 时间序列</span><span class="badge">固定期限 · 查看日期变化</span></div>
+                    <div class="ma-panel-controls">
+                        <div class="ma-controls"><label for="maTermSelect">期限</label><select id="maTermSelect"></select></div>
+                        <div id="maTimeStatus" class="ma-status" role="status"></div>
+                    </div>
+                    <div class="chart-box tall" id="maTimeSeriesChart"></div>
+                    <div class="table-wrap"><table><thead id="maTimeSeriesHeader"></thead><tbody id="maTimeSeriesBody"></tbody></table></div>
+                    <div class="footnote">表格展示截至所选日期最近10个日期。<br>每条曲线独立计算自己的 MA 窗口；窗口不足或缺失数据时，图表保留空缺。</div>
+                </div>
+                <div class="card ma-analysis-card">
+                    <div class="card-title"><span>📊 移动平均 · 期限曲线</span><span class="badge">固定日期 · 查看期限结构</span></div>
+                    <div class="ma-panel-controls">
+                    <div class="ma-export-controls">
+                        <label for="maCurveExportRange">导出范围</label>
+                        <select id="maCurveExportRange"><option value="single">当前日期</option><option value="full">全量</option><option value="custom">自定义区间</option></select>
+                        <span id="maCurveRangePickers" class="ma-range-pickers" hidden><input type="date" id="maCurveFrom" aria-label="导出起始日期"><span>～</span><input type="date" id="maCurveTo" aria-label="导出结束日期"></span>
+                        <button type="button" class="btn-download" id="maCurveDownloadBtn">📥 导出XLSX</button>
+                    </div>
+                    <div id="maExportStatus" class="ma-status" role="status"></div>
+                    <div id="maCurveStatus" class="ma-status" role="status"></div>
+                    </div>
+                    <div class="chart-box tall" id="maCurveChart"></div>
+                    <div class="table-wrap"><table><thead id="maCurveHeader"></thead><tbody id="maCurveBody"></tbody></table></div>
+                    <div class="footnote">导出范围只控制 XLSX 日期范围；导出全部已设置曲线、对应 MA、差值及缺失原因，使用完整历史计算各日期的 MA。</div>
+                </div>
+            </div>
+        </section>
+
         </div><!-- /view-detail -->
 
         <div class="view-premium" id="viewPremium" style="display:none;">
@@ -631,82 +667,6 @@
                 </div>
             </div>
 
-            <div class="premium-ma-grid">
-                <div class="card premium-ma-card">
-                    <div class="card-title">
-                        <span>📊 移动平均 · 时间序列</span>
-                        <span class="badge">基础曲线 / 对比曲线</span>
-                    </div>
-                    <div class="ma-controls">
-                        <label>期限</label>
-                        <select id="maTermSelect"></select>
-                        <label>曲线</label>
-                        <div class="ma-curve-group" id="maCurveGroupA">
-                            <label class="ma-curve-item"><input type="checkbox" value="base" checked onchange="toggleMACurve('base', this.checked)">基础曲线</label>
-                            <label class="ma-curve-item"><input type="checkbox" value="compare" checked onchange="toggleMACurve('compare', this.checked)">对比曲线</label>
-                        </div>
-                        <div class="ma-period-group" id="maPeriodGroupA"></div>
-                        <div class="ma-custom-row">
-                            <input type="number" id="maCustomInputA" placeholder="天数" min="1" max="5000">
-                            <button onclick="addMAPeriod('A')">+添加</button>
-                        </div>
-                    </div>
-                    <div class="chart-box tall" id="maTimeSeriesChart"></div>
-                    <div class="ma-controls ma-table-controls">
-                        <label>表格截至日期</label>
-                        <select id="maTimeSeriesEndDateSelect"></select>
-                        <span class="ma-chip">默认展示10个日期</span>
-                    </div>
-                    <div class="table-wrap">
-                        <table>
-                            <thead id="maTimeSeriesHeader"></thead>
-                            <tbody id="maTimeSeriesBody"></tbody>
-                        </table>
-                    </div>
-                    <div class="footnote">选定期限下，基础曲线与对比曲线同步展示。</div>
-                </div>
-                <div class="card premium-ma-card">
-                    <div class="card-title">
-                        <span>📊 移动平均 · 期限曲线</span>
-                        <span class="badge">基础曲线 / 对比曲线</span>
-                        <button class="btn-download" id="maCurveDownloadBtn" style="font-size:11px;padding:3px 12px;">📥 导出XLSX</button>
-                        <span class="ma-export-range">
-                            <select id="maCurveExportRange" title="导出范围">
-                                <option value="single">当前日期</option>
-                                <option value="full">全量</option>
-                                <option value="custom">自定义区间</option>
-                            </select>
-                            <span id="maCurveRangePickers" style="display:none;">
-                                <input type="date" id="maCurveFrom" title="起始日期">
-                                <span style="color:#8898b0;">~</span>
-                                <input type="date" id="maCurveTo" title="结束日期">
-                            </span>
-                        </span>
-                    </div>
-                    <div class="ma-controls">
-                        <label>日期</label>
-                        <select id="maDateSelect"></select>
-                        <label>曲线</label>
-                        <div class="ma-curve-group" id="maCurveGroupB">
-                            <label class="ma-curve-item"><input type="checkbox" value="base" checked onchange="toggleMACurve('base', this.checked)">基础曲线</label>
-                            <label class="ma-curve-item"><input type="checkbox" value="compare" checked onchange="toggleMACurve('compare', this.checked)">对比曲线</label>
-                        </div>
-                        <div class="ma-period-group" id="maPeriodGroupB"></div>
-                        <div class="ma-custom-row">
-                            <input type="number" id="maCustomInputB" placeholder="天数" min="1" max="5000">
-                            <button onclick="addMAPeriod('B')">+添加</button>
-                        </div>
-                    </div>
-                    <div class="chart-box tall" id="maCurveChart"></div>
-                    <div class="table-wrap">
-                        <table>
-                            <thead id="maCurveHeader"></thead>
-                            <tbody id="maCurveBody"></tbody>
-                        </table>
-                    </div>
-                    <div class="footnote">选定日期下，基础曲线与对比曲线按期限同步展示。</div>
-                </div>
-            </div>
         </div>
 
         <div class="view-preset" id="viewPreset" style="display:none;">
@@ -793,7 +753,7 @@
                 </div>
                 <div class="preset-info green" style="margin-top:0.75rem;">
                     <strong>🔵 机构共识：年内触发调整概率极低</strong>
-                    中泰证券、华创证券、国泰海通等多家机构一致认为：当前研究值与最高值仅差<span id="consensusGapNum">6</span>BP，远低于25BP触发线，2026年全年不会触发预定利率上限的被动下调。<a href="prediction_views.html" target="_blank" class="preset-link">查看完整机构观点 →</a>
+                    中泰证券、华创证券、国泰海通等多家机构一致认为：当前研究值与最高值仅差<span id="consensusGapNum">6</span>BP，远低于25BP触发线，2026年全年不会触发预定利率上限的被动下调。<a href="docs/prediction_views.html" target="_blank" class="preset-link">查看完整机构观点 →</a>
                 </div>
             </div>
 
@@ -815,7 +775,7 @@
                         <div class="preset-info blue"><strong>📊 10年期国债</strong> 来源：中国货币网日频（akshare）</div>
                         <div class="preset-info blue"><strong>✅ 税收溢价</strong> 由10Y国开债/进出口债与国债收益率之差动态计算（250/750日移动平均）</div>
                     </div>
-                    <div style="margin-top:0.75rem;"><a href="formula_report.html" target="_blank" class="btn-download" style="text-decoration:none;display:inline-block;">查看完整计算公式报告 →</a></div>
+                    <div style="margin-top:0.75rem;"><a href="docs/formula_report.html" target="_blank" class="btn-download" style="text-decoration:none;display:inline-block;">查看完整计算公式报告 →</a></div>
                 </div>
                 <div class="card">
                     <div class="card-title"><span>📜 监管触发规则</span></div>
@@ -826,7 +786,7 @@
                     </div>
                     <div class="preset-info yellow" style="margin-top:0.5rem;"><strong>⚡ 紧急调整：</strong>当市场利率或本公司经营出现重大变化时，要及时启动相应决策机制，进行相关调整。</div>
                     <div class="preset-info red" style="margin-top:0.5rem;" id="presetTriggerHistory"></div>
-                    <div style="margin-top:0.75rem;"><a href="trigger_analysis_report.html" target="_blank" class="btn-download" style="text-decoration:none;display:inline-block;">查看完整触发分析报告 →</a></div>
+                    <div style="margin-top:0.75rem;"><a href="docs/trigger_analysis_report.html" target="_blank" class="btn-download" style="text-decoration:none;display:inline-block;">查看完整触发分析报告 →</a></div>
                 </div>
             </div>
         </div>
@@ -965,24 +925,24 @@
         let maPrefixStoreRef = null; // 记录当前 dataStore 引用，变化时重建前缀和
         let currentBondType = 'gov_spot';
         const BOND_CONFIGS = [
-            { key: 'gov_spot', name: '中债国债即期', shortName: '国债', file: 'data.json', measure: '即期' },
-            { key: 'gov_ytm', name: '中债国债到期', shortName: '国债', file: 'data_gov_ytm.json', measure: '到期' },
-            { key: 'cdb_spot', name: '中债国开债即期', shortName: '国开债', file: 'data_cdb.json', measure: '即期' },
-            { key: 'cdb_ytm', name: '中债国开债到期', shortName: '国开债', file: 'data_cdb_ytm.json', measure: '到期' },
-            { key: 'rail_spot', name: '中债铁道债即期', shortName: '铁道债', file: 'data_rail_spot.json', measure: '即期' },
-            { key: 'rail_ytm', name: '中债铁道债到期', shortName: '铁道债', file: 'data_rail_ytm.json', measure: '到期' },
-            { key: 'corp_aaa_spot', name: '中债企业债(AAA)即期', shortName: 'AAA企业债', file: 'data_corp_aaa_spot.json', measure: '即期' },
-            { key: 'corp_aaa_ytm', name: '中债企业债(AAA)到期', shortName: 'AAA企业债', file: 'data_corp_aaa_ytm.json', measure: '到期' },
-            { key: 'exim_spot', name: '中债进出口行债即期', shortName: '进出口行债', file: 'data_exim_spot.json', measure: '即期' },
-            { key: 'exim_ytm', name: '中债进出口行债到期', shortName: '进出口行债', file: 'data_exim_ytm.json', measure: '到期' },
-            { key: 'adbc_spot', name: '中债农发行债即期', shortName: '农发行债', file: 'data_adbc_spot.json', measure: '即期' },
-            { key: 'adbc_ytm', name: '中债农发行债到期', shortName: '农发行债', file: 'data_adbc_ytm.json', measure: '到期' },
-            { key: 'local_gov_spot', name: '中国地方政府债即期', shortName: '地方政府债', file: 'data_local_gov_spot.json', measure: '即期' },
-            { key: 'local_gov_ytm', name: '中国地方政府债到期', shortName: '地方政府债', file: 'data_local_gov_ytm.json', measure: '到期' },
-            { key: 'corp_aa_spot', name: '中债企业债(AA)即期', shortName: 'AA企业债', file: 'data_corp_aa_spot.json', measure: '即期' },
-            { key: 'corp_aa_ytm', name: '中债企业债(AA)到期', shortName: 'AA企业债', file: 'data_corp_aa_ytm.json', measure: '到期' },
-            { key: 'corp_a_spot', name: '中债企业债(A)即期', shortName: 'A企业债', file: 'data_corp_a_spot.json', measure: '即期' },
-            { key: 'corp_a_ytm', name: '中债企业债(A)到期', shortName: 'A企业债', file: 'data_corp_a_ytm.json', measure: '到期' }
+            { key: 'gov_spot', name: '中债国债即期', shortName: '国债', file: 'data/data.json', measure: '即期' },
+            { key: 'gov_ytm', name: '中债国债到期', shortName: '国债', file: 'data/data_gov_ytm.json', measure: '到期' },
+            { key: 'cdb_spot', name: '中债国开债即期', shortName: '国开债', file: 'data/data_cdb.json', measure: '即期' },
+            { key: 'cdb_ytm', name: '中债国开债到期', shortName: '国开债', file: 'data/data_cdb_ytm.json', measure: '到期' },
+            { key: 'rail_spot', name: '中债铁道债即期', shortName: '铁道债', file: 'data/data_rail_spot.json', measure: '即期' },
+            { key: 'rail_ytm', name: '中债铁道债到期', shortName: '铁道债', file: 'data/data_rail_ytm.json', measure: '到期' },
+            { key: 'corp_aaa_spot', name: '中债企业债(AAA)即期', shortName: 'AAA企业债', file: 'data/data_corp_aaa_spot.json', measure: '即期' },
+            { key: 'corp_aaa_ytm', name: '中债企业债(AAA)到期', shortName: 'AAA企业债', file: 'data/data_corp_aaa_ytm.json', measure: '到期' },
+            { key: 'exim_spot', name: '中债进出口行债即期', shortName: '进出口行债', file: 'data/data_exim_spot.json', measure: '即期' },
+            { key: 'exim_ytm', name: '中债进出口行债到期', shortName: '进出口行债', file: 'data/data_exim_ytm.json', measure: '到期' },
+            { key: 'adbc_spot', name: '中债农发行债即期', shortName: '农发行债', file: 'data/data_adbc_spot.json', measure: '即期' },
+            { key: 'adbc_ytm', name: '中债农发行债到期', shortName: '农发行债', file: 'data/data_adbc_ytm.json', measure: '到期' },
+            { key: 'local_gov_spot', name: '中国地方政府债即期', shortName: '地方政府债', file: 'data/data_local_gov_spot.json', measure: '即期' },
+            { key: 'local_gov_ytm', name: '中国地方政府债到期', shortName: '地方政府债', file: 'data/data_local_gov_ytm.json', measure: '到期' },
+            { key: 'corp_aa_spot', name: '中债企业债(AA)即期', shortName: 'AA企业债', file: 'data/data_corp_aa_spot.json', measure: '即期' },
+            { key: 'corp_aa_ytm', name: '中债企业债(AA)到期', shortName: 'AA企业债', file: 'data/data_corp_aa_ytm.json', measure: '到期' },
+            { key: 'corp_a_spot', name: '中债企业债(A)即期', shortName: 'A企业债', file: 'data/data_corp_a_spot.json', measure: '即期' },
+            { key: 'corp_a_ytm', name: '中债企业债(A)到期', shortName: 'A企业债', file: 'data/data_corp_a_ytm.json', measure: '到期' }
         ];
         const BOND_KEYS = BOND_CONFIGS.map(cfg => cfg.key);
         const bondConfigByKey = Object.fromEntries(BOND_CONFIGS.map(cfg => [cfg.key, cfg]));
@@ -2616,20 +2576,6 @@
         // ================================================================
         // 移动平均分析模块
         // ================================================================
-        const MA_PRESETS = [60, 120, 250, 500, 750, 1000, 2500];
-        const MA_COLORS = ['#1f4a7a', '#e74c3c', '#27ae60', '#f39c12', '#8e44ad', '#16a085', '#e67e22', '#2c3e50', '#d35400', '#7f8c8d'];
-        const MA_TABLE_DATE_COUNT = 10;
-        const MA_KEY_TERMS = ['1Y', '3Y', '5Y', '7Y', '10Y', '15Y', '20Y', '30Y', '40Y', '50Y'];
-        let maActivePeriods = [60];           // 默认开启的周期
-        let maSelectedCurves = ['base', 'compare'];
-        let maSelectedTerm = '10Y';
-        let maSelectedDate = null;
-        let maTimeSeriesEndDate = null;
-        let maTimeSeriesChart = null;
-        let maCurveChartEcharts = null;
-        let maInitialized = false;
-
-        // 通用MA计算：返回某日期某期限的N日移动平均
         function calcMAForDate(targetDate, period) {
             ensureMAPrefixSums();
             const dates = dataStore.dates;
@@ -2645,651 +2591,21 @@
             return avg;
         }
 
-        // 计算某期限的时间序列MA（返回 [{date, value}] 数组）
-        function calcMATimeSeries(term, period) {
-            ensureMAPrefixSums();
-            if (maPrefixSum && maPrefixSum[term]) {
-                const dates = dataStore.dates;
-                return dates.map((d, i) => {
-                    const n = Math.min(period, i + 1);
-                    const a = i - n + 1;
-                    const b = i + 1;
-                    const count = maPrefixValid[b] - maPrefixValid[a];
-                    const sum = maPrefixSum[term][b] - maPrefixSum[term][a];
-                    return { date: d, value: count > 0 ? sanitizeRate(sum / count) : null };
-                });
-            }
-            const dates = dataStore.dates;
-            const rates = dataStore.rates;
-            const result = [];
-            for (let i = 0; i < dates.length; i++) {
-                const n = Math.min(period, i + 1);
-                const startIdx = i - n + 1;
-                let sum = 0, count = 0;
-                for (let j = startIdx; j <= i; j++) {
-                    const v = sanitizeRate(rates[j][term]);
-                    if (v !== null) { sum += v; count++; }
-                }
-                if (count > 0) {
-                    result.push({ date: dates[i], value: sanitizeRate(sum / count) });
-                } else {
-                    result.push({ date: dates[i], value: null });
-                }
-            }
-            return result;
-        }
-
-        // 计算原始利率时间序列
-        function calcRawTimeSeries(term) {
-            const dates = dataStore.dates;
-            const rates = dataStore.rates;
-            return dates.map((d, i) => ({ date: d, value: sanitizeRate(rates[i][term]) }));
-        }
+        let maAnalysisView = null;
 
         function initMAAnalysis() {
-            if (maInitialized) {
-                // 更新选择器选项但保持选中状态
-                populateMASelectors();
-                normalizeMASelection();
-                renderMAPeriodControls();
-                return;
-            }
-            maInitialized = true;
-            maSelectedDate = maSelectedDate || dataStore.latestDate;
-            populateMASelectors();
-            normalizeMASelection();
-            renderMAPeriodControls();
-            bindMAEvents();
-        }
-
-        function populateMASelectors() {
-            // 期限选择器
-            const termSelect = document.getElementById('maTermSelect');
-            const dateSelect = document.getElementById('maDateSelect');
-            const timeEndSelect = document.getElementById('maTimeSeriesEndDateSelect');
-            if (lifeMAContextReady()) {
-                const termsToShow = (lifeDiscountData.terms || []).filter(t => !isNaN(parseFloat(t)));
-                if (!termsToShow.includes(maSelectedTerm)) maSelectedTerm = termsToShow.includes('10Y') ? '10Y' : termsToShow[0];
-                termSelect.innerHTML = termsToShow.map(t =>
-                    `<option value="${t}" ${t === maSelectedTerm ? 'selected' : ''}>${t}</option>`
-                ).join('');
-                const recentDates = (lifeDiscountData.dates || []).slice(-500);
-                if (!recentDates.includes(maSelectedDate)) maSelectedDate = lifeSelectedDate || recentDates[recentDates.length - 1];
-                if (!recentDates.includes(maTimeSeriesEndDate)) maTimeSeriesEndDate = lifeSelectedDate || recentDates[recentDates.length - 1];
-                dateSelect.innerHTML = recentDates.map(d =>
-                    `<option value="${d}" ${d === maSelectedDate ? 'selected' : ''}>${d}</option>`
-                ).join('');
-                if (timeEndSelect) {
-                    timeEndSelect.innerHTML = recentDates.map(d =>
-                        `<option value="${d}" ${d === maTimeSeriesEndDate ? 'selected' : ''}>${d}</option>`
-                    ).join('');
-                }
-                return;
-            }
-            const termsToShow = allTerms.filter(t => {
-                const n = parseFloat(t);
-                return !isNaN(n);
-            });
-            termSelect.innerHTML = termsToShow.map(t =>
-                `<option value="${t}" ${t === maSelectedTerm ? 'selected' : ''}>${t}</option>`
-            ).join('');
-            // 日期选择器
-            const dates = dataStore.dates;
-            // 只放最近500个交易日，避免下拉太长
-            const recentDates = dates.slice(-500);
-            dateSelect.innerHTML = recentDates.map(d =>
-                `<option value="${d}" ${d === maSelectedDate ? 'selected' : ''}>${d}</option>`
-            ).join('');
-            if (timeEndSelect) {
-                if (!recentDates.includes(maTimeSeriesEndDate)) maTimeSeriesEndDate = recentDates[recentDates.length - 1];
-                timeEndSelect.innerHTML = recentDates.map(d =>
-                    `<option value="${d}" ${d === maTimeSeriesEndDate ? 'selected' : ''}>${d}</option>`
-                ).join('');
-            }
-        }
-
-        function renderMAPeriodControls() {
-            normalizeMASelection();
-            syncMACurveControls();
-            const allPeriods = [...new Set([...MA_PRESETS, ...maActivePeriods])].sort((a, b) => a - b);
-            ['A', 'B'].forEach(suffix => {
-                const container = document.getElementById('maPeriodGroup' + suffix);
-                let html = '';
-                for (const p of allPeriods) {
-                    const checked = maActivePeriods.includes(p) ? 'checked' : '';
-                    const colorIdx = maActivePeriods.indexOf(p);
-                    const color = colorIdx >= 0 ? MA_COLORS[colorIdx % MA_COLORS.length] : '#aaa';
-                    html += `<label class="ma-period-item">
-                        <input type="checkbox" ${checked} onchange="toggleMAPeriod(${p}, this.checked)">
-                        <span class="ma-legend-dot" style="background:${color}"></span>MA${p}
-                    </label>`;
-                }
-                container.innerHTML = html;
-            });
-        }
-
-        function normalizeMASelection(preferredPeriod) {
-            if (maSelectedCurves.length === 0) maSelectedCurves = ['base'];
-            maSelectedCurves = ['base', 'compare'].filter(key => maSelectedCurves.includes(key));
-            if (maActivePeriods.length === 0) maActivePeriods = [preferredPeriod || 60];
-            maActivePeriods = [...new Set(maActivePeriods)].sort((a, b) => a - b);
-            if (maSelectedCurves.length > 1 && maActivePeriods.length > 1) {
-                maActivePeriods = [preferredPeriod || maActivePeriods[0] || 60];
-            }
-        }
-
-        function syncMACurveControls() {
-            ['A', 'B'].forEach(suffix => {
-                const group = document.getElementById('maCurveGroup' + suffix);
-                if (!group) return;
-                group.querySelectorAll('input[type="checkbox"]').forEach(input => {
-                    input.checked = maSelectedCurves.includes(input.value);
-                });
-            });
-        }
-
-        function toggleMACurve(curveKey, checked) {
-            if (checked) {
-                if (!maSelectedCurves.includes(curveKey)) maSelectedCurves.push(curveKey);
-            } else {
-                maSelectedCurves = maSelectedCurves.filter(key => key !== curveKey);
-            }
-            normalizeMASelection(maActivePeriods[0] || 60);
-            renderMAPeriodControls();
-            renderMATimeSeriesChart();
-            renderMACurveChart();
-        }
-
-        function toggleMAPeriod(period, checked) {
-            if (checked) {
-                if (maSelectedCurves.length > 1) maActivePeriods = [period];
-                else if (!maActivePeriods.includes(period)) maActivePeriods.push(period);
-            } else {
-                if (maSelectedCurves.length <= 1 || maActivePeriods.length > 1) {
-                    maActivePeriods = maActivePeriods.filter(p => p !== period);
-                }
-            }
-            normalizeMASelection(period);
-            renderMAPeriodControls();
-            renderMATimeSeriesChart();
-            renderMACurveChart();
-        }
-
-        function addMAPeriod(suffix) {
-            const input = document.getElementById('maCustomInput' + suffix);
-            const val = parseInt(input.value);
-            if (isNaN(val) || val < 2 || val > 5000) {
-                input.style.borderColor = '#e74c3c';
-                setTimeout(() => input.style.borderColor = '', 1500);
-                return;
-            }
-            if (!maActivePeriods.includes(val)) {
-                if (maSelectedCurves.length > 1) maActivePeriods = [val];
-                else maActivePeriods.push(val);
-            }
-            normalizeMASelection(val);
-            input.value = '';
-            renderMAPeriodControls();
-            renderMATimeSeriesChart();
-            renderMACurveChart();
-        }
-
-        function bindMAEvents() {
-            document.getElementById('maTermSelect').addEventListener('change', function() {
-                maSelectedTerm = this.value;
-                renderMATimeSeriesChart();
-            });
-            document.getElementById('maDateSelect').addEventListener('change', function() {
-                maSelectedDate = this.value;
-                renderMACurveChart();
-            });
-            const maTimeSeriesEndDateSelect = document.getElementById('maTimeSeriesEndDateSelect');
-            if (maTimeSeriesEndDateSelect) {
-                maTimeSeriesEndDateSelect.addEventListener('change', function() {
-                    maTimeSeriesEndDate = this.value;
-                    renderMATimeSeriesTable(buildPremiumMASeries('time'));
-                });
-            }
-            // 回车提交
-            document.getElementById('maCustomInputA').addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') addMAPeriod('A');
-            });
-            document.getElementById('maCustomInputB').addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') addMAPeriod('B');
-            });
-        }
-
-        function renderMATimeSeriesChart() {
-            if (!dataStore || !dataStore.dates || dataStore.dates.length === 0) return;
-            const container = document.getElementById('maTimeSeriesChart');
-            if (!container) return;
-            if (maTimeSeriesChart) { maTimeSeriesChart.dispose(); }
-            maTimeSeriesChart = echarts.init(container);
-
-            const dates = dataStore.dates;
-            const term = maSelectedTerm;
-
-            // 原始利率 + 每个MA周期
-            const series = [];
-            // 原始利率（深色细线）
-            const rawData = calcRawTimeSeries(term);
-            series.push({
-                name: '即期利率',
-                type: 'line',
-                data: rawData.map(d => d.value),
-                showSymbol: false,
-                smooth: false,
-                lineStyle: { width: 1, color: '#bdc3c7', type: 'solid' },
-                itemStyle: { color: '#bdc3c7' },
-                connectNulls: false
-            });
-            // MA线
-            for (let i = 0; i < maActivePeriods.length; i++) {
-                const p = maActivePeriods[i];
-                const maData = calcMATimeSeries(term, p);
-                const color = MA_COLORS[i % MA_COLORS.length];
-                series.push({
-                    name: 'MA' + p,
-                    type: 'line',
-                    data: maData.map(d => d.value),
-                    showSymbol: false,
-                    smooth: false,
-                    lineStyle: { width: 2, color: color },
-                    itemStyle: { color: color },
-                    connectNulls: false
-                });
-            }
-
-            // Y轴范围
-            let min = Infinity, max = -Infinity;
-            for (const s of series) {
-                for (const v of s.data) {
-                    if (v !== null && v < min) min = v;
-                    if (v !== null && v > max) max = v;
-                }
-            }
-            if (min === Infinity) { min = 0; max = 5; }
-            const padding = (max - min) * 0.1 || 0.5;
-
-            maTimeSeriesChart.setOption(optimizeChartOption({
-                tooltip: lightweightTooltip({ trigger: 'axis', axisPointer: { type: 'cross' },
-                    formatter: function(params) {
-                        let s = params[0].axisValue + '<br/>';
-                        for (const p of params) {
-                            if (p.value !== null) s += p.marker + ' ' + p.seriesName + ': ' + p.value.toFixed(4) + '%<br/>';
-                        }
-                        return s;
-                    }
-                }),
-                legend: { top: 5, textStyle: { fontSize: 11 } },
-                grid: { left: 55, right: 20, top: 45, bottom: 70 },
-                xAxis: { type: 'category', data: dates,
-                    axisLabel: { fontSize: 10, rotate: 30, interval: Math.floor(dates.length / 15) },
-                    name: '日期', nameLocation: 'center', nameGap: 45
+            if (maAnalysisView) { maAnalysisView.resize(); return; }
+            const order = ['gov_spot', 'cdb_spot', 'rail_spot', 'corp_aaa_spot', 'corp_aa_spot', 'corp_a_spot', 'exim_spot', 'adbc_spot', 'local_gov_spot'];
+            maAnalysisView = YieldMA.createView({
+                root: document.getElementById('maAnalysis'),
+                bonds: order.map(key => ({ key, label: bondConfigByKey[key].shortName, file: bondFiles[key] })),
+                load: async bond => {
+                    const response = await fetch(bond.file, { cache: 'no-cache' });
+                    if (!response.ok) throw new Error('原始数据不可用');
+                    return response.json();
                 },
-                yAxis: { type: 'value', name: '利率 (%)', nameLocation: 'center', nameGap: 40,
-                    axisLabel: { formatter: v => v.toFixed(2) + '%', fontSize: 11 },
-                    min: min - padding, max: max + padding, boundaryGap: false
-                },
-                series: series,
-                dataZoom: [
-                    { type: 'inside', start: 60, end: 100, realtime: false, throttle: 150 },
-                    { type: 'slider', start: 60, end: 100, height: 18, bottom: 8, realtime: false, throttle: 150 }
-                ]
-            }));
-        }
-
-        function renderMACurveChart() {
-            if (!dataStore || !dataStore.dates || dataStore.dates.length === 0) return;
-            const container = document.getElementById('maCurveChart');
-            if (!container) return;
-            if (maCurveChartEcharts) { maCurveChartEcharts.dispose(); }
-            maCurveChartEcharts = echarts.init(container);
-
-            const targetDate = maSelectedDate || dataStore.latestDate;
-            const termsNumeric = allTerms.filter(t => !isNaN(parseFloat(t)));
-            const termsLabels = termsNumeric.map(t => t);
-
-            // 原始曲线
-            const rawRates = dataStore.rates[dataStore.dates.indexOf(targetDate)] || {};
-            const rawCurve = termsNumeric.map(t => sanitizeRate(rawRates[t]));
-
-            const series = [{
-                name: '即期利率',
-                type: 'line',
-                data: rawCurve,
-                smooth: true,
-                symbol: 'circle',
-                symbolSize: 5,
-                lineStyle: { width: 2, color: '#34495e' },
-                itemStyle: { color: '#34495e' }
-            }];
-
-            // MA曲线
-            for (let i = 0; i < maActivePeriods.length; i++) {
-                const p = maActivePeriods[i];
-                const maResult = calcMAForDate(targetDate, p);
-                const color = MA_COLORS[i % MA_COLORS.length];
-                let maCurve = [];
-                if (maResult) {
-                    maCurve = termsNumeric.map(t => maResult[t]);
-                }
-                series.push({
-                    name: 'MA' + p,
-                    type: 'line',
-                    data: maCurve,
-                    smooth: true,
-                    symbol: 'diamond',
-                    symbolSize: 4,
-                    lineStyle: { width: 2, color: color, type: 'dashed' },
-                    itemStyle: { color: color }
-                });
-            }
-
-            // Y轴范围
-            let min = Infinity, max = -Infinity;
-            for (const s of series) {
-                for (const v of s.data) {
-                    if (v !== null && v < min) min = v;
-                    if (v !== null && v > max) max = v;
-                }
-            }
-            if (min === Infinity) { min = 0; max = 5; }
-            const padding = (max - min) * 0.1 || 0.5;
-
-            maCurveChartEcharts.setOption(optimizeChartOption({
-                tooltip: lightweightTooltip({ trigger: 'axis',
-                    formatter: function(params) {
-                        let s = '期限: ' + params[0].axisValue + '<br/>';
-                        for (const p of params) {
-                            if (p.value !== null) s += p.marker + ' ' + p.seriesName + ': ' + p.value.toFixed(4) + '%<br/>';
-                        }
-                        return s;
-                    }
-                }),
-                legend: { top: 5, textStyle: { fontSize: 11 } },
-                grid: { left: 55, right: 20, top: 45, bottom: 70 },
-                xAxis: { type: 'category', data: termsLabels,
-                    axisLabel: { fontSize: 11 },
-                    name: '期限 (年)', nameLocation: 'center', nameGap: 30
-                },
-                yAxis: { type: 'value', name: '利率 (%)', nameLocation: 'center', nameGap: 40,
-                    axisLabel: { formatter: v => v.toFixed(2) + '%', fontSize: 11 },
-                    min: min - padding, max: max + padding, boundaryGap: false
-                },
-                series: series
-            }));
-        }
-
-        function downloadMACurveExcel() {
-            if (!dataStore || !dataStore.dates || dataStore.dates.length === 0) {
-                alert('暂无数据可导出。');
-                return;
-            }
-            ensureMAPrefixSums();
-            const termsNumeric = allTerms.filter(t => !isNaN(parseFloat(t)));
-            const mode = (document.getElementById('maCurveExportRange') || {}).value || 'single';
-
-            // 确定要导出的日期列表
-            let dateList = [];
-            if (mode === 'single') {
-                dateList = [maSelectedDate || dataStore.latestDate];
-            } else if (mode === 'full') {
-                dateList = dataStore.dates.slice();
-            } else { // custom 区间
-                let from = document.getElementById('maCurveFrom').value;
-                let to = document.getElementById('maCurveTo').value;
-                if (!from) from = dataStore.dates[0];
-                if (!to) to = dataStore.dates[dataStore.dates.length - 1];
-                dateList = dataStore.dates.filter(d => d >= from && d <= to);
-                if (dateList.length === 0) { alert('所选区间内没有可用数据。'); return; }
-            }
-
-            // 列头：日期, 期限, 即期%, MA60%, MA250%...
-            const header = ['日期', '期限', '即期利率(%)'];
-            for (const p of maActivePeriods) header.push('MA' + p + '(%)');
-            const rows = [header];
-
-            if (mode === 'single') {
-                // 单日期：行=期限（与旧版一致，便于快速看一张快照）
-                const targetDate = dateList[0];
-                const rawRates = dataStore.rates[dataStore.dates.indexOf(targetDate)] || {};
-                const rawCurve = termsNumeric.map(t => sanitizeRate(rawRates[t]));
-                const maCurves = maActivePeriods.map(p => {
-                    const r = calcMAForDate(targetDate, p);
-                    return termsNumeric.map(t => r ? r[t] : null);
-                });
-                for (let i = 0; i < termsNumeric.length; i++) {
-                    const row = [targetDate, termsNumeric[i], rawCurve[i]];
-                    for (const c of maCurves) row.push(c[i]);
-                    rows.push(row);
-                }
-            } else {
-                // 全量/自定义区间：长表 日期×期限
-                for (const d of dateList) {
-                    const rawRates = dataStore.rates[dataStore.dates.indexOf(d)] || {};
-                    const rawCurve = termsNumeric.map(t => sanitizeRate(rawRates[t]));
-                    const maCurves = maActivePeriods.map(p => {
-                        const r = calcMAForDate(d, p);
-                        return termsNumeric.map(t => r ? r[t] : null);
-                    });
-                    for (let i = 0; i < termsNumeric.length; i++) {
-                        const row = [d, termsNumeric[i], rawCurve[i]];
-                        for (const c of maCurves) row.push(c[i]);
-                        rows.push(row);
-                    }
-                }
-            }
-
-            const ws = XLSX.utils.aoa_to_sheet(rows);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'MA期限曲线');
-            const bondLabel = bondNames[currentBondType] || '';
-            const suffix = mode === 'single' ? dateList[0]
-                : mode === 'full' ? '全量' + dataStore.dates.length + '天'
-                : dateList[0] + '_' + dateList[dateList.length - 1];
-            XLSX.writeFile(wb, bondLabel + '_MA期限曲线_' + suffix + '.xlsx');
-        }
-
-        function lifeMAContextReady() {
-            return activeSection === 'premium' && lifeDiscountData && lifeSelectedBenchmark && lifeSelectedSpreadBond;
-        }
-
-        function lifeBenchmarkValueAt(dateIdx, term) {
-            const row = lifeRowAt(lifeDiscountData.benchmarkRows?.[lifeSelectedBenchmark], dateIdx);
-            return lifeValue(row, term);
-        }
-
-        function lifeSpreadBondValueAt(dateIdx, term) {
-            const row = lifeRowAt(lifeDiscountData.spreadBondRows?.[lifeSelectedSpreadBond], dateIdx);
-            return lifeSpreadValue(row, term);
-        }
-
-        function lifeFullCompareValueAt(dateIdx, term) {
-            const benchmark = lifeBenchmarkValueAt(dateIdx, term);
-            const premiumRow = getLifeRows(dateIdx, lifeSelectedBenchmark, lifeSelectedSpreadBond).premiumRow || [];
-            const termIdx = (lifeDiscountData.terms || []).indexOf(term);
-            const premium = termIdx >= 0 ? premiumRow[termIdx] : null;
-            // compare = benchmark + premium, giving the selected comparison curve a full 1Y-50Y term structure.
-            if (benchmark != null && premium != null) return Number((benchmark + premium).toFixed(8));
-            return lifeSpreadBondValueAt(dateIdx, term);
-        }
-
-        function maCurveLabel(curveKey) {
-            return curveKey === 'base' ? '基础曲线' : '对比曲线';
-        }
-
-        function lifeCurveValueAt(curveKey, dateIdx, term) {
-            return curveKey === 'base' ? lifeBenchmarkValueAt(dateIdx, term) : lifeFullCompareValueAt(dateIdx, term);
-        }
-
-        function calcLifeMAValue(curveKey, dateIdx, term, period) {
-            const start = Math.max(0, dateIdx - period + 1);
-            let sum = 0, count = 0;
-            for (let i = start; i <= dateIdx; i++) {
-                const value = lifeCurveValueAt(curveKey, i, term);
-                if (value != null && isFinite(value)) {
-                    sum += value;
-                    count++;
-                }
-            }
-            return count > 0 ? Number((sum / count).toFixed(8)) : null;
-        }
-
-        function buildPremiumMASeries(kind) {
-            normalizeMASelection();
-            const dates = lifeDiscountData.dates || [];
-            const terms = lifeDiscountData.terms || [];
-            const palette = { base: '#1f4a7a', compare: '#e67e22' };
-            const seriesRows = [];
-            if (maSelectedCurves.length > 1) {
-                const period = maActivePeriods[0] || 60;
-                for (const curveKey of maSelectedCurves) {
-                    const name = maCurveLabel(curveKey) + ' MA' + period;
-                    if (kind === 'time') {
-                        seriesRows.push({
-                            key: curveKey + '_' + period,
-                            name,
-                            curveKey,
-                            period,
-                            data: dates.map((date, idx) => ({ label: date, value: calcLifeMAValue(curveKey, idx, maSelectedTerm || '10Y', period) })),
-                            color: palette[curveKey]
-                        });
-                    } else {
-                        const date = maSelectedDate && dates.includes(maSelectedDate) ? maSelectedDate : (lifeSelectedDate || dates[dates.length - 1]);
-                        const dateIdx = dates.indexOf(date);
-                        seriesRows.push({
-                            key: curveKey + '_' + period,
-                            name,
-                            curveKey,
-                            period,
-                            data: terms.map(term => ({ label: term, year: parseFloat(term), value: calcLifeMAValue(curveKey, dateIdx, term, period) })),
-                            color: palette[curveKey]
-                        });
-                    }
-                }
-                return seriesRows;
-            }
-            const curveKey = maSelectedCurves[0] || 'base';
-            maActivePeriods.forEach((period, idx) => {
-                const name = maCurveLabel(curveKey) + ' MA' + period;
-                if (kind === 'time') {
-                    seriesRows.push({
-                        key: curveKey + '_' + period,
-                        name,
-                        curveKey,
-                        period,
-                        data: dates.map((date, dateIdx) => ({ label: date, value: calcLifeMAValue(curveKey, dateIdx, maSelectedTerm || '10Y', period) })),
-                        color: MA_COLORS[idx % MA_COLORS.length]
-                    });
-                } else {
-                    const date = maSelectedDate && dates.includes(maSelectedDate) ? maSelectedDate : (lifeSelectedDate || dates[dates.length - 1]);
-                    const dateIdx = dates.indexOf(date);
-                    seriesRows.push({
-                        key: curveKey + '_' + period,
-                        name,
-                        curveKey,
-                        period,
-                        data: terms.map(term => ({ label: term, year: parseFloat(term), value: calcLifeMAValue(curveKey, dateIdx, term, period) })),
-                        color: MA_COLORS[idx % MA_COLORS.length]
-                    });
-                }
+                echarts, xlsx: XLSX, chartOption: optimizeChartOption, tooltip: lightweightTooltip
             });
-            return seriesRows;
-        }
-
-        function maTimeSeriesTableDates() {
-            const dates = lifeDiscountData.dates || [];
-            if (dates.length === 0) return [];
-            const fallbackEndDate = lifeSelectedDate || dates[dates.length - 1];
-            const endDate = maTimeSeriesEndDate && dates.includes(maTimeSeriesEndDate) ? maTimeSeriesEndDate : fallbackEndDate;
-            const endIdx = Math.max(0, dates.indexOf(endDate));
-            const startIdx = Math.max(0, endIdx - MA_TABLE_DATE_COUNT + 1);
-            return dates.slice(startIdx, endIdx + 1);
-        }
-
-        function renderMATimeSeriesTable(seriesRows) {
-            const thead = document.getElementById('maTimeSeriesHeader');
-            const tbody = document.getElementById('maTimeSeriesBody');
-            if (!thead || !tbody || !lifeMAContextReady()) return;
-            const dates = lifeDiscountData.dates || [];
-            const fmt = v => v != null && isFinite(v) ? v.toFixed(4) : '—';
-            thead.innerHTML = '<tr><th>日期</th>' + seriesRows.map(s => '<th>' + s.name + '(%)</th>').join('') + (seriesRows.length === 2 ? '<th>差值(bp)</th>' : '') + '</tr>';
-            tbody.innerHTML = maTimeSeriesTableDates().map(date => {
-                const idx = dates.indexOf(date);
-                const values = seriesRows.map(s => s.data[idx]?.value ?? null);
-                const diff = values.length === 2 ? safeDiffBp(values[1], values[0]) : null;
-                return '<tr><td><strong>' + date + '</strong></td>' + values.map(v => '<td>' + fmt(v) + '</td>').join('') + (values.length === 2 ? '<td>' + formatDiffCell(diff) + '</td>' : '') + '</tr>';
-            }).join('');
-        }
-
-        function renderMACurveTable(seriesRows) {
-            const thead = document.getElementById('maCurveHeader');
-            const tbody = document.getElementById('maCurveBody');
-            if (!thead || !tbody || !lifeMAContextReady()) return;
-            const terms = lifeDiscountData.terms || [];
-            const fmt = v => v != null && isFinite(v) ? v.toFixed(4) : '—';
-            thead.innerHTML = '<tr><th>期限</th>' + seriesRows.map(s => '<th>' + s.name + '(%)</th>').join('') + (seriesRows.length === 2 ? '<th>差值(bp)</th>' : '') + '</tr>';
-            const keyTerms = MA_KEY_TERMS.filter(term => terms.includes(term));
-            tbody.innerHTML = keyTerms.map(term => {
-                const idx = terms.indexOf(term);
-                const values = seriesRows.map(s => s.data[idx]?.value ?? null);
-                const diff = values.length === 2 ? safeDiffBp(values[1], values[0]) : null;
-                return '<tr><td><strong>' + term + '</strong></td>' + values.map(v => '<td>' + fmt(v) + '</td>').join('') + (values.length === 2 ? '<td>' + formatDiffCell(diff) + '</td>' : '') + '</tr>';
-            }).join('');
-        }
-
-        function renderMATimeSeriesChart() {
-            if (!lifeMAContextReady()) return;
-            const container = document.getElementById('maTimeSeriesChart');
-            if (!container) return;
-            if (maTimeSeriesChart) maTimeSeriesChart.dispose();
-            maTimeSeriesChart = echarts.init(container);
-            const dates = lifeDiscountData.dates || [];
-            const seriesRows = buildPremiumMASeries('time');
-            const values = seriesRows.flatMap(s => s.data.map(item => item.value)).filter(v => v != null && isFinite(v));
-            const min = values.length ? Math.min(...values) : 0;
-            const max = values.length ? Math.max(...values) : 5;
-            const padding = (max - min) * 0.1 || 0.5;
-            maTimeSeriesChart.setOption(optimizeChartOption({
-                tooltip: lightweightTooltip({ trigger: 'axis', formatter: function(params) {
-                    let s = params[0].axisValue + '<br/>';
-                    for (const p of params) if (p.value != null) s += p.marker + ' ' + p.seriesName + ': ' + p.value.toFixed(4) + '%<br/>';
-                    return s;
-                }}),
-                legend: { top: 5, type: 'scroll' },
-                grid: { left: 55, right: 20, top: 55, bottom: 55 },
-                xAxis: { type: 'category', data: dates, axisLabel: { fontSize: 10, rotate: 30, interval: Math.max(1, Math.floor(dates.length / 12)) }, name: '日期', nameLocation: 'center', nameGap: 42 },
-                yAxis: { type: 'value', name: '利率 (%)', nameLocation: 'center', nameGap: 40, axisLabel: { formatter: v => v.toFixed(2) + '%' }, min: min - padding, max: max + padding },
-                series: seriesRows.map(s => ({ name: s.name, type: 'line', data: s.data.map(item => item.value), showSymbol: false, smooth: false, lineStyle: { width: 2.4, color: s.color }, itemStyle: { color: s.color } }))
-            }), true);
-            renderMATimeSeriesTable(seriesRows);
-        }
-
-        function renderMACurveChart() {
-            if (!lifeMAContextReady()) return;
-            const container = document.getElementById('maCurveChart');
-            if (!container) return;
-            if (maCurveChartEcharts) maCurveChartEcharts.dispose();
-            maCurveChartEcharts = echarts.init(container);
-            const seriesRows = buildPremiumMASeries('curve');
-            const values = seriesRows.flatMap(s => s.data.map(item => item.value)).filter(v => v != null && isFinite(v));
-            const min = values.length ? Math.min(...values) : 0;
-            const max = values.length ? Math.max(...values) : 5;
-            const padding = (max - min) * 0.12 || 0.5;
-            maCurveChartEcharts.setOption(optimizeChartOption({
-                tooltip: lightweightTooltip({ trigger: 'axis', formatter: function(params) {
-                    let s = params[0].axisValue + '年<br/>';
-                    for (const p of params) if (p.value && p.value[1] != null) s += p.marker + ' ' + p.seriesName + ': ' + p.value[1].toFixed(4) + '%<br/>';
-                    return s;
-                }}),
-                legend: { top: 5, type: 'scroll' },
-                grid: { left: 55, right: 20, top: 55, bottom: 45 },
-                xAxis: { type: 'value', name: '期限 (年)', nameLocation: 'center', nameGap: 28 },
-                yAxis: { type: 'value', name: '利率 (%)', nameLocation: 'center', nameGap: 40, axisLabel: { formatter: v => v.toFixed(2) + '%' }, min: min - padding, max: max + padding },
-                series: seriesRows.map(s => ({ name: s.name, type: 'line', data: s.data.map(item => [item.year, item.value]), showSymbol: false, smooth: false, lineStyle: { width: 2.4, color: s.color }, itemStyle: { color: s.color } }))
-            }), true);
-            renderMACurveTable(seriesRows);
         }
 
         let deferredDetailRenderId = 0;
@@ -3334,6 +2650,7 @@
             renderCurveChart();
             renderKeyTermsTable();
             renderHistoryDiffTable();
+            initMAAnalysis();
             if (options.deferHeavy === false) {
                 renderDeferredDetailSections();
             } else {
@@ -3547,14 +2864,14 @@
             if (lifeDiscountData) return lifeDiscountData;
             let raw = null;
             try {
-                const resp = await fetch('life_discount.json', { cache: 'no-cache' });
+                const resp = await fetch('data/life_discount.json', { cache: 'no-cache' });
                 if (resp.ok) raw = await resp.json();
             } catch (e) { /* fetch 失败，尝试离线快照 */ }
             if (!raw) {
                 const snap = await loadOfflineSnapshot();
                 if (snap && snap.life_discount) raw = snap.life_discount;
             }
-            if (!raw) throw new Error('life_discount.json 不可用（离线快照也缺失）');
+            if (!raw) throw new Error('data/life_discount.json 不可用（离线快照也缺失）');
             const normalized = normalizeLifeDiscountData(raw);
             lifeDiscountData = normalized;
             lifeSelectedDate = defaultLifeEvaluationDate();
@@ -3843,9 +3160,6 @@
             renderLifeDiffTable();
             renderPremiumMonitor();
             renderDiscountGenerationAll();
-            initMAAnalysis();
-            renderMATimeSeriesChart();
-            renderMACurveChart();
         }
 
         function lifeDateOnOrBefore(targetDate) {
@@ -3990,7 +3304,7 @@
         ];
 
         function normalizeLifeDiscountData(raw) {
-            if (!raw || !raw.dates || !raw.dates.length || !raw.baseRows) throw new Error('life_discount.json 数据为空');
+            if (!raw || !raw.dates || !raw.dates.length || !raw.baseRows) throw new Error('data/life_discount.json 数据为空');
             const normalized = Object.assign({}, raw);
             if (Array.isArray(normalized.baseRows)) {
                 normalized.baseRows = { gov_spot: normalized.baseRows };
@@ -4998,8 +4312,7 @@
             setTimeout(() => {
                 if (curveChart) curveChart.resize();
                 if (forecastChart) forecastChart.resize();
-                if (maTimeSeriesChart) maTimeSeriesChart.resize();
-                if (maCurveChartEcharts) maCurveChartEcharts.resize();
+                if (maAnalysisView) maAnalysisView.resize();
             }, 50);
             // 切换曲线类型
             if (type !== currentBondType) {
@@ -5162,21 +4475,7 @@
 
             // 导出按钮
             document.getElementById('downloadSampleBtn').addEventListener('click', downloadExcel);
-            document.getElementById('maCurveDownloadBtn').addEventListener('click', downloadMACurveExcel);
             document.getElementById('quarterDownloadBtn').addEventListener('click', downloadQuarterExcel);
-            // MA期限曲线导出范围切换
-            const exportRangeSel = document.getElementById('maCurveExportRange');
-            const rangePickers = document.getElementById('maCurveRangePickers');
-            const maFrom = document.getElementById('maCurveFrom');
-            const maTo = document.getElementById('maCurveTo');
-            if (dataStore && dataStore.dates.length) {
-                maFrom.value = dataStore.dates[0];
-                maTo.value = dataStore.dates[dataStore.dates.length - 1];
-            }
-            exportRangeSel.addEventListener('change', function() {
-                rangePickers.style.display = (this.value === 'custom') ? 'inline-flex' : 'none';
-            });
-
             // 预测周期选择器
             document.getElementById('forecastPeriodSelect').addEventListener('change', function() {
                 forecastPeriod = parseInt(this.value);
@@ -5191,8 +4490,7 @@
             window.addEventListener('resize', function() {
                 if (curveChart) curveChart.resize();
                 if (forecastChart) forecastChart.resize();
-                if (maTimeSeriesChart) maTimeSeriesChart.resize();
-                if (maCurveChartEcharts) maCurveChartEcharts.resize();
+                if (maAnalysisView) maAnalysisView.resize();
                 if (presetChart) presetChart.resize();
             });
 
@@ -5278,7 +4576,7 @@
             try {
                 let summary = null;
                 try {
-                    const resp = await fetch('summary.json?' + Date.now(), { cache: 'no-store' });
+                    const resp = await fetch('data/summary.json?' + Date.now(), { cache: 'no-store' });
                     if (resp.ok) summary = await resp.json();
                 } catch (e) { /* fetch 失败，尝试离线快照 */ }
                 if (!summary || !summary.curves) {
@@ -5354,7 +4652,7 @@
             if (typeof window !== 'undefined' && window.OFFLINE_SNAPSHOT) { _offlineSnapshot = window.OFFLINE_SNAPSHOT; return Promise.resolve(_offlineSnapshot); }
             return new Promise(resolve => {
                 const s = document.createElement('script');
-                s.src = 'offline_snapshot.js';
+                s.src = 'assets/offline_snapshot.js';
                 s.onload = () => { _offlineSnapshot = (window.OFFLINE_SNAPSHOT) || null; resolve(_offlineSnapshot); };
                 s.onerror = () => { _offlineSnapshot = null; resolve(null); };
                 document.head.appendChild(s);
@@ -5387,7 +4685,7 @@
             document.getElementById('uploadStatus').textContent = '正在加载最新数据...';
             document.getElementById('uploadStatus').style.color = '#f57c00';
             try {
-                const resp = await fetch('data.json', { cache: 'no-cache' });
+                const resp = await fetch('data/data.json', { cache: 'no-cache' });
                 if (resp.ok) {
                     const rawData = await resp.json();
                     if (rawData && rawData.dates && rawData.dates.length > 0) {
@@ -5466,18 +4764,8 @@
             document.getElementById('forecastDateSelect').innerHTML = '<option>—</option>';
             document.getElementById('forecastRefDateSelect').innerHTML = '<option>—</option>';
             document.getElementById('quarterRefDateSelect').innerHTML = '<option>—</option>';
-            document.getElementById('maTermSelect').innerHTML = '<option>—</option>';
-            document.getElementById('maDateSelect').innerHTML = '<option>—</option>';
-            document.getElementById('maTimeSeriesEndDateSelect').innerHTML = '<option>—</option>';
-            document.getElementById('maPeriodGroupA').innerHTML = '';
-            document.getElementById('maPeriodGroupB').innerHTML = '';
-            document.getElementById('maTimeSeriesChart').innerHTML = emptyHtml;
-            document.getElementById('maCurveChart').innerHTML = emptyHtml;
             if (curveChart) { curveChart.dispose(); curveChart = null; }
             if (forecastChart) { forecastChart.dispose(); forecastChart = null; }
-            if (maTimeSeriesChart) { maTimeSeriesChart.dispose(); maTimeSeriesChart = null; }
-            if (maCurveChartEcharts) { maCurveChartEcharts.dispose(); maCurveChartEcharts = null; }
-            maInitialized = false;
         }
 
         document.addEventListener('DOMContentLoaded', async function() {

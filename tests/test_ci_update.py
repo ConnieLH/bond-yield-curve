@@ -31,11 +31,11 @@ class CurveConfigTests(unittest.TestCase):
 
     def test_legacy_files_are_preserved_for_existing_four_datasets(self):
         files = {dataset.key: dataset.filename for dataset in ci_update.ALL_DATASETS}
-        self.assertEqual(files["gov_spot"], "data.json")
-        self.assertEqual(files["cdb_spot"], "data_cdb.json")
-        self.assertEqual(files["gov_ytm"], "data_gov_ytm.json")
-        self.assertEqual(files["cdb_ytm"], "data_cdb_ytm.json")
-        self.assertEqual(files["rail_spot"], "data_rail_spot.json")
+        self.assertEqual(files["gov_spot"], "data/data.json")
+        self.assertEqual(files["cdb_spot"], "data/data_cdb.json")
+        self.assertEqual(files["gov_ytm"], "data/data_gov_ytm.json")
+        self.assertEqual(files["cdb_ytm"], "data/data_cdb_ytm.json")
+        self.assertEqual(files["rail_spot"], "data/data_rail_spot.json")
 
 
 class BootstrapTests(unittest.TestCase):

@@ -1,0 +1,48 @@
+.ma-analysis { margin: 20px 0; }
+.ma-analysis .ma-settings-title { justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.ma-analysis .ma-settings-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
+.ma-analysis .ma-setting-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px 14px; margin-top: 10px; background: #f6faff; border: 1px solid #e0e9f2; border-radius: 10px; }
+.ma-analysis .ma-setting-name { min-width: 72px; font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; }
+.ma-analysis .ma-setting-name i { width: 10px; height: 10px; border-radius: 50%; }
+.ma-analysis label { font-size: 13px; color: #3e5a7a; }
+.ma-analysis select, .ma-analysis input { border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 8px; font: inherit; font-size: 13px; background: #fff; max-width: 100%; }
+.ma-analysis select[data-field="bond"] { min-width: 112px; }
+.ma-analysis select[data-field="period"] { min-width: 104px; }
+.ma-analysis .ma-custom-window { display: inline-flex; gap: 6px; align-items: center; }
+.ma-analysis [hidden] { display: none !important; }
+.ma-analysis .ma-custom-window input { width: 110px; }
+.ma-analysis button { cursor: pointer; padding: 6px 12px; border-radius: 7px; border: 1px solid #cbd5e1; background: #fff; color: #1f4a7a; font-size: 13px; }
+.ma-analysis .ma-add, .ma-analysis .btn-download { background: #1f4a7a; border-color: #1f4a7a; color: #fff; }
+.ma-analysis .ma-remove { color: #64748b; margin-left: auto; }
+.ma-analysis button:disabled { opacity: .4; cursor: default; }
+.ma-analysis .ma-source-summary { flex-basis: 100%; font-size: 12px; color: #64748b; padding-left: 80px; overflow-wrap: anywhere; }
+.ma-analysis .ma-input-error { font-size: 12px; color: #b42318; overflow-wrap: anywhere; }
+.ma-analysis .ma-analysis-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 20px; }
+.ma-analysis .ma-analysis-card { min-width: 0; display: grid; grid-template-rows: subgrid; grid-row: span 5; margin-bottom: 0; }
+.ma-analysis .ma-analysis-card .chart-box { height: 360px; flex: 0 0 auto; }
+.ma-analysis .ma-analysis-card .table-wrap { max-height: 260px; overflow: auto; margin-top: 12px; }
+.ma-analysis .ma-analysis-card .footnote { margin-top: 10px; }
+.ma-analysis .ma-notice { font-size: 12px; line-height: 1.7; color: #526780; }
+.ma-analysis .ma-status { color: #a15c00; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.ma-analysis .ma-status:not(:empty) { padding: 8px 10px; margin-bottom: 8px; border-radius: 6px; background: #fff8eb; }
+.ma-analysis .ma-export-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 14px; background: #f6faff; border-radius: 10px; border: 1px solid #e0e9f2; margin: 0 0 10px; }
+.ma-analysis .ma-export-controls input { width: 140px; }
+.ma-analysis .ma-range-pickers { display: inline-flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.ma-analysis .ma-export-controls .btn-download { margin-left: auto; }
+.ma-analysis th { white-space: normal; min-width: 90px; font-size: 12px; }
+.ma-analysis th:first-child { min-width: 90px; }
+.ma-analysis .ma-missing { display: inline-block; max-width: 160px; white-space: normal; color: #8b6508; font-size: 11px; }
+.ma-analysis .ma-diff-positive { color: #b83e35; }
+.ma-analysis .ma-diff-negative { color: #187353; }
+@media (max-width: 1024px) {
+    .ma-analysis .ma-analysis-grid { grid-template-columns: 1fr; gap: 20px; }
+    .ma-analysis .ma-analysis-card { display: flex; flex-direction: column; grid-row: auto; }
+}
+@media (max-width: 640px) {
+    .ma-analysis .ma-source-summary { padding-left: 0; }
+    .ma-analysis .ma-setting-row { gap: 8px; padding: 10px; }
+    .ma-analysis .ma-setting-name { flex-basis: 100%; }
+    .ma-analysis .ma-remove { margin-left: 0; }
+    .ma-analysis .ma-analysis-card .chart-box { height: 280px; }
+}
+@media print { .ma-analysis .ma-setting-row, .ma-analysis .ma-export-controls { display: none; } .ma-analysis .ma-analysis-grid { grid-template-columns: 1fr; } }

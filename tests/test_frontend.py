@@ -3,13 +3,13 @@ import unittest
 
 
 INDEX = Path("index.html")
-METHODOLOGY = Path("methodology.html")
+METHODOLOGY = Path("docs/methodology.html")
 
 
 class FrontendTests(unittest.TestCase):
     def test_life_discount_json_uses_cacheable_static_request(self):
         text = INDEX.read_text(encoding="utf-8")
-        self.assertIn("fetch('life_discount.json', { cache: 'no-cache' })", text)
+        self.assertIn("fetch('data/life_discount.json', { cache: 'no-cache' })", text)
         self.assertNotIn("life_discount.json?' + Date.now()", text)
 
     def test_life_discount_premium_controls_include_terminal_spread_and_premium_curve(self):
@@ -109,11 +109,11 @@ class FrontendTests(unittest.TestCase):
 
     def test_preset_reports_are_local_and_linked(self):
         text = INDEX.read_text(encoding="utf-8")
-        self.assertIn('href="formula_report.html"', text)
-        self.assertIn('href="trigger_analysis_report.html"', text)
-        self.assertIn('href="prediction_views.html"', text)
+        self.assertIn('href="docs/formula_report.html"', text)
+        self.assertIn('href="docs/trigger_analysis_report.html"', text)
+        self.assertIn('href="docs/prediction_views.html"', text)
         for name in ("formula_report.html", "trigger_analysis_report.html", "prediction_views.html"):
-            self.assertTrue(Path(name).exists(), f"missing report file: {name}")
+            self.assertTrue((Path("docs") / name).exists(), f"missing report file: {name}")
         self.assertTrue(METHODOLOGY.exists())
 
 
@@ -356,17 +356,14 @@ class FrontendTests(unittest.TestCase):
         self.assertNotIn("<th>分块</th><th>曲线</th>", text)
         self.assertNotIn("<td></td><td><strong>", text)
 
-    def test_ma_cards_are_available_under_premium_with_dual_curve_tables(self):
+    def test_ma_cards_are_available_under_base_with_shared_settings(self):
         text = INDEX.read_text(encoding="utf-8")
-        premium_index = text.index('id="viewPremium"')
-        ma_index = text.index('id="maTimeSeriesChart"')
-        self.assertLess(premium_index, ma_index)
-        self.assertIn('id="maTimeSeriesBody"', text)
-        self.assertIn('id="maCurveBody"', text)
-        self.assertIn("renderMATimeSeriesTable", text)
-        self.assertIn("renderMACurveTable", text)
-        self.assertIn("基础曲线", text)
-        self.assertIn("对比曲线", text)
+        base = text[text.index('id="viewDetail"'):text.index('id="viewPremium"')]
+        premium = text[text.index('id="viewPremium"'):text.index('id="viewPreset"')]
+        for element in ("maAnalysis", "maCurveSettings", "maTimeSeriesChart", "maCurveChart", "maTimeSeriesBody", "maCurveBody"):
+            self.assertIn(f'id="{element}"', base)
+            self.assertNotIn(f'id="{element}"', premium)
+        self.assertEqual(text.count('id="maCurveSettings"'), 1)
 
     def test_comparison_spacing_and_diff_cells_are_consistent(self):
         text = INDEX.read_text(encoding="utf-8")
@@ -378,45 +375,39 @@ class FrontendTests(unittest.TestCase):
         self.assertIn("diff-col positive", text)
         self.assertIn("diff-col negative", text)
 
-    def test_premium_ma_cards_are_aligned_and_compare_curve_is_full_term(self):
+    def test_ma_cards_keep_real_coverage_and_responsive_layout(self):
         text = INDEX.read_text(encoding="utf-8")
-        self.assertIn('class="premium-ma-grid"', text)
-        self.assertIn('class="card premium-ma-card"', text)
-        self.assertIn(".premium-ma-grid { display: grid;", text)
-        self.assertIn("grid-template-columns: repeat(2, minmax(0, 1fr));", text)
-        self.assertIn(".premium-ma-card { width: 100%;", text)
-        self.assertIn(".premium-ma-card .table-wrap { max-height:", text)
-        self.assertIn("overflow: auto;", text)
-        self.assertNotIn("premium-ma-stack", text)
-        self.assertNotIn("premium-ma-content", text)
-        self.assertIn("function lifeFullCompareValueAt", text)
-        self.assertIn("benchmark + premium", text)
-        self.assertIn("lifeFullCompareValueAt(dateIdx, term)", text)
+        css = Path("assets/ma-analysis.css").read_text(encoding="utf-8")
+        self.assertIn('class="ma-analysis-grid"', text)
+        self.assertEqual(text.count('class="card ma-analysis-card"'), 2)
+        self.assertIn("repeat(2, minmax(0, 1fr))", css)
+        self.assertIn("@media (max-width: 1024px)", css)
+        self.assertIn("overflow: auto", css)
+        self.assertNotIn("function lifeFullCompareValueAt", text)
+        self.assertIn("期限缺失时留空", text)
 
-    def test_premium_ma_curve_and_period_controls_drive_charts_and_tables(self):
+    def test_ma_settings_use_raw_spot_sources_and_support_additional_curves(self):
         text = INDEX.read_text(encoding="utf-8")
-        self.assertIn('id="maCurveGroupA"', text)
-        self.assertIn('id="maCurveGroupB"', text)
-        self.assertIn('value="base" checked', text)
-        self.assertIn('value="compare" checked', text)
-        self.assertIn("let maSelectedCurves = ['base', 'compare'];", text)
-        self.assertIn("let maActivePeriods = [60];", text)
-        self.assertIn("function toggleMACurve", text)
-        self.assertIn("function normalizeMASelection", text)
-        self.assertIn("maSelectedCurves.length > 1 && maActivePeriods.length > 1", text)
-        self.assertIn("function buildPremiumMASeries", text)
-        self.assertIn("renderMATimeSeriesTable(seriesRows", text)
-        self.assertIn("renderMACurveTable(seriesRows", text)
+        self.assertIn('id="maAddCurve"', text)
+        self.assertIn("YieldMA.createView", text)
+        self.assertIn("fetch(bond.file, { cache: 'no-cache' })", text)
+        for key in ("gov_spot", "cdb_spot", "rail_spot", "corp_aaa_spot", "corp_aa_spot", "corp_a_spot", "exim_spot", "adbc_spot", "local_gov_spot"):
+            self.assertIn(key, text[text.index("function initMAAnalysis()"):text.index("let deferredDetailRenderId")])
+        self.assertNotIn('id="maCurveGroupA"', text)
+        self.assertNotIn('id="maCurveGroupB"', text)
+        self.assertTrue(Path("assets/ma-analysis.js").is_file())
 
-    def test_premium_ma_tables_use_ten_recent_dates_and_key_terms(self):
+    def test_ma_notes_and_export_range_explain_the_actual_scope(self):
         text = INDEX.read_text(encoding="utf-8")
-        self.assertIn('id="maTimeSeriesEndDateSelect"', text)
-        self.assertIn("const MA_TABLE_DATE_COUNT = 10;", text)
-        self.assertIn("const MA_KEY_TERMS", text)
-        self.assertIn("function maTimeSeriesTableDates", text)
-        self.assertIn("endIdx - MA_TABLE_DATE_COUNT + 1", text)
-        self.assertIn("maTimeSeriesEndDateSelect", text)
-        self.assertIn("MA_KEY_TERMS.filter(term => terms.includes(term))", text)
+        self.assertIn('id="maDateSelect"', text)
+        self.assertNotIn('id="maTimeSeriesEndDateSelect"', text)
+        self.assertIn("截至所选日期最近10个日期", text)
+        self.assertIn("MA1 = 当日即期收益率", text)
+        self.assertIn("最近 x 条原始即期收益率记录", text)
+        self.assertIn('<label for="maCurveExportRange">导出范围</label>', text)
+        self.assertIn('id="maCurveStatus"', text)
+        self.assertIn('id="maExportStatus"', text)
+        self.assertIn("导出全部已设置曲线", text)
 
     def test_frontend_makeup_weekends_match_the_backend_calendar(self):
         text = INDEX.read_text(encoding="utf-8")

@@ -416,8 +416,8 @@
 
             async function loadData() {
                 const [predRes, actRes] = await Promise.all([
-                    fetch('data/predictions.json?t=' + Date.now()).then(r => r.json()),
-                    fetch('data/actuals.json?t=' + Date.now()).then(r => r.json())
+                    fetch('../data/predictions.json?t=' + Date.now()).then(r => r.json()),
+                    fetch('../data/actuals.json?t=' + Date.now()).then(r => r.json())
                 ]);
                 return { preds: predRes.predictions || [], acts: actRes.actuals || [],
                          predUpdated: predRes.last_updated || '未知', actUpdated: actRes.last_updated || '未知' };

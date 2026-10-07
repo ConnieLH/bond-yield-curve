@@ -24,10 +24,10 @@ import requests
 
 SEARCHYC_URL = "https://yield.chinabond.com.cn/cbweb-mn/yc/searchYc"
 PRESET_MODEL_SOURCE_URL = "https://hh9616.github.io/preset-rate-reference-model/data/model-data.js"
-SUMMARY_FILE = "summary.json"
-LIFE_DISCOUNT_FILE = "life_discount.json"
-PRESET_MODEL_FILE = "preset_model_data.js"
-MAKEUP_AUDIT_FILE = "data_makeup_weekend_audit.json"
+SUMMARY_FILE = "data/summary.json"
+LIFE_DISCOUNT_FILE = "data/life_discount.json"
+PRESET_MODEL_FILE = "assets/preset_model_data.js"
+MAKEUP_AUDIT_FILE = "data/data_makeup_weekend_audit.json"
 DATA_SCHEMA_VERSION = 2
 LIFE_DISCOUNT_SCHEMA_VERSION = 3
 MAKEUP_AUDIT_SCHEMA_VERSION = 1
@@ -154,10 +154,10 @@ CURVES = [
 ]
 
 LEGACY_FILENAMES = {
-    "gov_spot": "data.json",
-    "gov_ytm": "data_gov_ytm.json",
-    "cdb_spot": "data_cdb.json",
-    "cdb_ytm": "data_cdb_ytm.json",
+    "gov_spot": "data/data.json",
+    "gov_ytm": "data/data_gov_ytm.json",
+    "cdb_spot": "data/data_cdb.json",
+    "cdb_ytm": "data/data_cdb_ytm.json",
 }
 
 
@@ -166,7 +166,7 @@ def build_datasets() -> List[DatasetConfig]:
     for curve in CURVES:
         for rate_type, zh in [("spot", "即期"), ("ytm", "到期")]:
             key = f"{curve.key}_{rate_type}"
-            filename = LEGACY_FILENAMES.get(key, f"data_{key}.json")
+            filename = LEGACY_FILENAMES.get(key, f"data/data_{key}.json")
             if rate_type == "spot" and not curve.has_official_spot:
                 source = "中债登到期收益率(qxll=0)经年付息平价债 bootstrap 推导"
             else:
@@ -1071,9 +1071,9 @@ def preset_load_bond_rows() -> List[dict]:
                 out[d] = v
         return out
 
-    gov = extract("data_gov_ytm.json")
-    cdb = extract("data_cdb_ytm.json")
-    ieb = extract("data_exim_ytm.json")
+    gov = extract("data/data_gov_ytm.json")
+    cdb = extract("data/data_cdb_ytm.json")
+    ieb = extract("data/data_exim_ytm.json")
     rows = []
     for d in sorted(set(gov) | set(cdb) | set(ieb)):
         rows.append({"date": d, "gov_10y": gov.get(d), "cdb_10y": cdb.get(d), "ieb_10y": ieb.get(d)})
