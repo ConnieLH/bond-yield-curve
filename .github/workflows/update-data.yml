@@ -44,7 +44,7 @@ jobs:
       - name: Fetch latest yield curve data and rebuild derived files
         env:
           CI_STRICT_FETCH: '1'
-        run: python ci_update.py
+        run: python -u ci_update.py
       - name: Validate data before saving to GitHub
         run: |
           python - <<'PY'

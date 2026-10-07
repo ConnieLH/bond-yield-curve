@@ -348,6 +348,22 @@ class MakeupTradingDayTests(unittest.TestCase):
 
 
 class UpdateTests(unittest.TestCase):
+    def test_complete_histories_starting_with_first_quote_update_incrementally(self):
+        for dataset in ci_update.ALL_DATASETS:
+            if dataset.key not in ci_update.LIFE_MONITOR_DATASET_KEYS:
+                continue
+            with self.subTest(dataset=dataset.key):
+                existing = {
+                    'dates': ['2013-01-04', '2026-09-30'],
+                    'meta': dataset.meta,
+                }
+                self.assertEqual(ci_update.next_fetch_date_for_dataset(dataset, existing), '2026-10-01')
+
+    def test_truncated_premium_history_still_requires_backfill(self):
+        dataset = ci_update.ALL_DATASETS[0]
+        existing = {'dates': ['2020-01-02', '2026-09-30'], 'meta': dataset.meta}
+        self.assertEqual(ci_update.next_fetch_date_for_dataset(dataset, existing), '2013-01-01')
+
     def test_new_dataset_without_metadata_rebuilds_from_start_date(self):
         dataset = next(d for d in ci_update.ALL_DATASETS if d.key == "rail_ytm")
         old_wrong_data = {

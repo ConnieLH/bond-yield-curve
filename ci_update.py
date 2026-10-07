@@ -33,6 +33,8 @@ LIFE_DISCOUNT_SCHEMA_VERSION = 3
 MAKEUP_AUDIT_SCHEMA_VERSION = 1
 START_DATE = "2020-01-02"
 PREMIUM_HISTORY_START_DATE = "2013-01-01"
+# The four complete source histories first contain a quote on 2013-01-04.
+PREMIUM_HISTORY_FIRST_OBSERVATION_DATE = "2013-01-04"
 SUMMARY_TERMS = ["1Y", "5Y", "10Y", "20Y", "30Y"]
 LIFE_TERMS = [f"{i}Y" for i in range(1, 51)]
 LIFE_SPREAD_TERMS = [f"{i}Y" for i in range(1, 21)]
@@ -232,7 +234,7 @@ def dataset_history_start(dataset: DatasetConfig) -> str:
 
 def needs_extended_history_rebuild(dataset: DatasetConfig, existing: dict) -> bool:
     dates = existing.get("dates") or []
-    return dataset.key in LIFE_MONITOR_DATASET_KEYS and bool(dates) and dates[0] > PREMIUM_HISTORY_START_DATE
+    return dataset.key in LIFE_MONITOR_DATASET_KEYS and bool(dates) and dates[0] > PREMIUM_HISTORY_FIRST_OBSERVATION_DATE
 
 
 def next_fetch_date_for_dataset(dataset: DatasetConfig, existing: dict) -> str:
