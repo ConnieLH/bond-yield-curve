@@ -99,3 +99,21 @@ test('all nine local datasets load and real MA values match a direct arithmetic 
         }
     }
 });
+
+test('time series uses each curve own maturity and window on the same observation date', () => {
+    const curves = [{ bond: 'gov', period: '1', term: '1Y' }, { bond: 'gov', period: '2', term: '10Y' }];
+    const results = MA.resultsFor('time', curves, { gov: fixture() }, '2026-09-30');
+    assert.deepEqual(results.map(result => result.value), [8, 7]);
+    assert.equal(MA.resultsFor('time', [{ bond: 'gov', period: '1', term: '50Y' }], { gov: fixture() }, '2026-09-30')[0].status, 'term');
+});
+
+test('term curve and selected export use each curve own date, including missing dates', () => {
+    const curves = [{ bond: 'gov', period: '1', date: '2026-09-29' }, { bond: 'gov', period: '2', date: '2026-09-30' }, { bond: 'gov', period: '1', date: '2026-10-01' }];
+    const datasets = { gov: fixture() }, bonds = [{ key: 'gov', label: '国债' }];
+    assert.deepEqual(MA.resultsFor('curve', curves, datasets, '1Y').map(result => result.value), [4, 6, null]);
+    const rows = MA.exportSelectedRows(curves, datasets, bonds, ['1Y', '10Y']);
+    assert.match(rows[0][1], /2026-09-29/);
+    assert.match(rows[0][3], /2026-09-30/);
+    assert.deepEqual(rows[1], ['1Y', 4, '可用', 6, '可用', null, '该日期无数据', 200, null]);
+    assert.deepEqual(rows[2], ['10Y', 5, '可用', 7, '可用', null, '该日期无数据', 200, null]);
+});

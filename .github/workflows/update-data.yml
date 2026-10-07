@@ -1,16 +1,8 @@
 name: update-18-chinabond-yield-curves-and-deploy
 
 on:
-  schedule:
-    # Beijing time 18:13, 19:37, 20:23, 21:47, 22:19 on weekdays.
-    - cron: '13 10 * * 1-5'
-    - cron: '37 11 * * 1-5'
-    - cron: '23 12 * * 1-5'
-    - cron: '47 13 * * 1-5'
-    - cron: '19 14 * * 1-5'
+  # Automatic data updates stay off; Pages has a separate deploy-only workflow.
   workflow_dispatch:
-  push:
-    branches: [main]
 
 permissions:
   contents: write

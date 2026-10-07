@@ -356,14 +356,15 @@ class FrontendTests(unittest.TestCase):
         self.assertNotIn("<th>分块</th><th>曲线</th>", text)
         self.assertNotIn("<td></td><td><strong>", text)
 
-    def test_ma_cards_are_available_under_base_with_shared_settings(self):
+    def test_ma_cards_are_available_under_base_with_independent_settings(self):
         text = INDEX.read_text(encoding="utf-8")
         base = text[text.index('id="viewDetail"'):text.index('id="viewPremium"')]
         premium = text[text.index('id="viewPremium"'):text.index('id="viewPreset"')]
-        for element in ("maAnalysis", "maCurveSettings", "maTimeSeriesChart", "maCurveChart", "maTimeSeriesBody", "maCurveBody"):
+        for element in ("maAnalysis", "maTimePanel", "maCurvePanel", "maTimeSettings", "maCurveSettings", "maTimeSeriesChart", "maCurveChart", "maTimeSeriesBody", "maCurveBody"):
             self.assertIn(f'id="{element}"', base)
             self.assertNotIn(f'id="{element}"', premium)
         self.assertEqual(text.count('id="maCurveSettings"'), 1)
+        self.assertEqual(text.count('id="maTimeSettings"'), 1)
 
     def test_comparison_spacing_and_diff_cells_are_consistent(self):
         text = INDEX.read_text(encoding="utf-8")
@@ -388,7 +389,9 @@ class FrontendTests(unittest.TestCase):
 
     def test_ma_settings_use_raw_spot_sources_and_support_additional_curves(self):
         text = INDEX.read_text(encoding="utf-8")
-        self.assertIn('id="maAddCurve"', text)
+        self.assertIn('id="maTimeAddCurve"', text)
+        self.assertIn('id="maCurveAddCurve"', text)
+        self.assertNotIn('id="maAddCurve"', text)
         self.assertIn("YieldMA.createView", text)
         self.assertIn("fetch(bond.file, { cache: 'no-cache' })", text)
         for key in ("gov_spot", "cdb_spot", "rail_spot", "corp_aaa_spot", "corp_aa_spot", "corp_a_spot", "exim_spot", "adbc_spot", "local_gov_spot"):
@@ -399,7 +402,8 @@ class FrontendTests(unittest.TestCase):
 
     def test_ma_notes_and_export_range_explain_the_actual_scope(self):
         text = INDEX.read_text(encoding="utf-8")
-        self.assertIn('id="maDateSelect"', text)
+        self.assertIn('id="maTimeTableDateSelect"', text)
+        self.assertNotIn('id="maDateSelect"', text)
         self.assertNotIn('id="maTimeSeriesEndDateSelect"', text)
         self.assertIn("截至所选日期最近10个日期", text)
         self.assertIn("MA1 = 当日即期收益率", text)
@@ -408,6 +412,7 @@ class FrontendTests(unittest.TestCase):
         self.assertIn('id="maCurveStatus"', text)
         self.assertIn('id="maExportStatus"', text)
         self.assertIn("导出全部已设置曲线", text)
+        self.assertIn("各曲线所选日期", text)
 
     def test_frontend_makeup_weekends_match_the_backend_calendar(self):
         text = INDEX.read_text(encoding="utf-8")

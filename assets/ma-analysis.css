@@ -1,8 +1,9 @@
 .ma-analysis { margin: 20px 0; }
 .ma-analysis .ma-settings-title { justify-content: space-between; flex-wrap: wrap; gap: 10px; }
-.ma-analysis .ma-settings-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
-.ma-analysis .ma-setting-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px 14px; margin-top: 10px; background: #f6faff; border: 1px solid #e0e9f2; border-radius: 10px; }
-.ma-analysis .ma-setting-name { min-width: 72px; font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; }
+.ma-analysis .ma-setting-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 12px 14px; margin-top: 10px; background: #f6faff; border: 1px solid #e0e9f2; border-radius: 10px; }
+.ma-analysis .ma-setting-field { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; }
+.ma-analysis .ma-setting-field label { white-space: nowrap; }
+.ma-analysis .ma-setting-name { min-width: 60px; font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; }
 .ma-analysis .ma-setting-name i { width: 10px; height: 10px; border-radius: 50%; }
 .ma-analysis label { font-size: 13px; color: #3e5a7a; }
 .ma-analysis select, .ma-analysis input { border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 8px; font: inherit; font-size: 13px; background: #fff; max-width: 100%; }
@@ -13,9 +14,10 @@
 .ma-analysis .ma-custom-window input { width: 110px; }
 .ma-analysis button { cursor: pointer; padding: 6px 12px; border-radius: 7px; border: 1px solid #cbd5e1; background: #fff; color: #1f4a7a; font-size: 13px; }
 .ma-analysis .ma-add, .ma-analysis .btn-download { background: #1f4a7a; border-color: #1f4a7a; color: #fff; }
-.ma-analysis .ma-remove { color: #64748b; margin-left: auto; }
+.ma-analysis .ma-remove { color: #64748b; }
 .ma-analysis button:disabled { opacity: .4; cursor: default; }
-.ma-analysis .ma-source-summary { flex-basis: 100%; font-size: 12px; color: #64748b; padding-left: 80px; overflow-wrap: anywhere; }
+.ma-analysis .ma-source-summary { flex-basis: 100%; font-size: 12px; color: #64748b; overflow-wrap: anywhere; }
+.ma-analysis .ma-panel-controls .ma-controls, .ma-analysis .ma-export-controls { margin-top: 12px; }
 .ma-analysis .ma-input-error { font-size: 12px; color: #b42318; overflow-wrap: anywhere; }
 .ma-analysis .ma-analysis-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 20px; }
 .ma-analysis .ma-analysis-card { min-width: 0; display: grid; grid-template-rows: subgrid; grid-row: span 5; margin-bottom: 0; }

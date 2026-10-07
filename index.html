@@ -481,29 +481,29 @@
 
         <section id="maAnalysis" class="ma-analysis" aria-label="即期收益率移动平均分析">
             <div class="card">
-                <div class="card-title ma-settings-title"><span>移动平均 · 曲线设置</span><div class="ma-settings-actions"><label for="maDateSelect">日期</label><select id="maDateSelect" aria-label="移动平均共享日期"></select><button type="button" id="maAddCurve" class="ma-add">＋ 添加曲线</button></div></div>
-                <p class="ma-notice">两个图共享以下设置。MA1 = 当日即期收益率；MAx = 截至该日最近 x 条原始即期收益率记录的算术平均，包含当日。按数据记录数计算，完整窗口不足时留空并提示。</p>
+                <div class="card-title"><span>移动平均 · 曲线设置</span></div>
+                <p class="ma-notice">两个板块独立设置曲线。MA1 = 当日即期收益率；MAx = 截至该日最近 x 条原始即期收益率记录的算术平均，包含当日。按数据记录数计算，完整窗口不足时留空并提示。</p>
                 <p class="ma-notice">本区固定使用即期曲线，独立于上方其他图表的口径选择。期限缺失时留空，不补值、不延伸；差值为曲线N−曲线1（bp）。</p>
-                <p class="ma-notice">日期统一控制左图及其表格的截至日、右图的观察日。</p>
-                <div id="maCurveSettings"></div>
             </div>
             <div class="ma-analysis-grid">
-                <div class="card ma-analysis-card">
-                    <div class="card-title"><span>📊 移动平均 · 时间序列</span><span class="badge">固定期限 · 查看日期变化</span></div>
+                <div class="card ma-analysis-card" id="maTimePanel">
+                    <div class="card-title ma-settings-title"><span>📊 移动平均 · 时间序列</span><button type="button" id="maTimeAddCurve" class="ma-add">＋ 添加曲线</button></div>
                     <div class="ma-panel-controls">
-                        <div class="ma-controls"><label for="maTermSelect">期限</label><select id="maTermSelect"></select></div>
+                        <div id="maTimeSettings"></div>
+                        <div class="ma-controls"><label for="maTimeTableDateSelect">表格截至日期</label><select id="maTimeTableDateSelect"></select></div>
                         <div id="maTimeStatus" class="ma-status" role="status"></div>
                     </div>
                     <div class="chart-box tall" id="maTimeSeriesChart"></div>
                     <div class="table-wrap"><table><thead id="maTimeSeriesHeader"></thead><tbody id="maTimeSeriesBody"></tbody></table></div>
                     <div class="footnote">表格展示截至所选日期最近10个日期。<br>每条曲线独立计算自己的 MA 窗口；窗口不足或缺失数据时，图表保留空缺。</div>
                 </div>
-                <div class="card ma-analysis-card">
-                    <div class="card-title"><span>📊 移动平均 · 期限曲线</span><span class="badge">固定日期 · 查看期限结构</span></div>
+                <div class="card ma-analysis-card" id="maCurvePanel">
+                    <div class="card-title ma-settings-title"><span>📊 移动平均 · 期限曲线</span><button type="button" id="maCurveAddCurve" class="ma-add">＋ 添加曲线</button></div>
                     <div class="ma-panel-controls">
+                    <div id="maCurveSettings"></div>
                     <div class="ma-export-controls">
                         <label for="maCurveExportRange">导出范围</label>
-                        <select id="maCurveExportRange"><option value="single">当前日期</option><option value="full">全量</option><option value="custom">自定义区间</option></select>
+                        <select id="maCurveExportRange"><option value="single">各曲线所选日期</option><option value="full">全量</option><option value="custom">自定义区间</option></select>
                         <span id="maCurveRangePickers" class="ma-range-pickers" hidden><input type="date" id="maCurveFrom" aria-label="导出起始日期"><span>～</span><input type="date" id="maCurveTo" aria-label="导出结束日期"></span>
                         <button type="button" class="btn-download" id="maCurveDownloadBtn">📥 导出XLSX</button>
                     </div>
@@ -512,7 +512,7 @@
                     </div>
                     <div class="chart-box tall" id="maCurveChart"></div>
                     <div class="table-wrap"><table><thead id="maCurveHeader"></thead><tbody id="maCurveBody"></tbody></table></div>
-                    <div class="footnote">导出范围只控制 XLSX 日期范围；导出全部已设置曲线、对应 MA、差值及缺失原因，使用完整历史计算各日期的 MA。</div>
+                    <div class="footnote">导出全部已设置曲线、对应 MA、差值及缺失原因。“各曲线所选日期”使用各自的日期；全量或自定义区间逐日计算，使用完整历史计算各日期的 MA。</div>
                 </div>
             </div>
         </section>
@@ -2596,8 +2596,7 @@
         function initMAAnalysis() {
             if (maAnalysisView) { maAnalysisView.resize(); return; }
             const order = ['gov_spot', 'cdb_spot', 'rail_spot', 'corp_aaa_spot', 'corp_aa_spot', 'corp_a_spot', 'exim_spot', 'adbc_spot', 'local_gov_spot'];
-            maAnalysisView = YieldMA.createView({
-                root: document.getElementById('maAnalysis'),
+            const sharedDataOptions = {
                 bonds: order.map(key => ({ key, label: bondConfigByKey[key].shortName, file: bondFiles[key] })),
                 load: async bond => {
                     const response = await fetch(bond.file, { cache: 'no-cache' });
@@ -2605,7 +2604,12 @@
                     return response.json();
                 },
                 echarts, xlsx: XLSX, chartOption: optimizeChartOption, tooltip: lightweightTooltip
-            });
+            };
+            const views = ['time', 'curve'].map(kind => YieldMA.createView({
+                ...sharedDataOptions, kind,
+                root: document.getElementById(kind === 'time' ? 'maTimePanel' : 'maCurvePanel')
+            }));
+            maAnalysisView = { resize() { views.forEach(view => view.resize()); } };
         }
 
         let deferredDetailRenderId = 0;
@@ -3788,7 +3792,7 @@
             renderDiscountGeneration(rule);
         }
 
-        function discountGenerationTableRows(data, forExport = false) {
+        function discountGenerationTableRows(data, forExport = false, items = DISCOUNT_TABLE_ITEMS) {
             const rows = [];
             const valueCell = (row, item) => {
                 const v = discountRowValue(row, item);
@@ -3800,7 +3804,7 @@
             };
             const addBlock = (section, sourceRows, compareRows) => {
                 rows.push({ section, header: true });
-                DISCOUNT_TABLE_ITEMS.forEach(item => {
+                items.forEach(item => {
                     rows.push({
                         section: '',
                         label: item.label,
@@ -3895,6 +3899,17 @@
             const exportWs = XLSX.utils.aoa_to_sheet(exportRows);
             const exportWb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(exportWb, exportWs, DISCOUNT_RULE_NAMES[rule]);
+            const annualItems = Array.from({ length: 50 }, (_, index) => ({ key: (index + 1) + 'Y', label: index + 1 }));
+            const annualRows = [['评估时点', data.dates.evalDate], ['对比时点', data.dates.compareDate], []];
+            discountGenerationTableRows(data, true, annualItems).forEach(row => {
+                if (row.header) {
+                    annualRows.push([row.section]);
+                    annualRows.push(['期限（年）'].concat(DISCOUNT_GENERATION_COLUMNS.map(col => col.label)));
+                } else {
+                    annualRows.push([row.label].concat(row.values));
+                }
+            });
+            XLSX.utils.book_append_sheet(exportWb, XLSX.utils.aoa_to_sheet(annualRows), '年度明细');
             XLSX.writeFile(exportWb, DISCOUNT_RULE_NAMES[rule] + '_折现率生成_' + data.dates.evalDate + '.xlsx');
             return;
             const rows = [['项目'].concat(DISCOUNT_TABLE_ITEMS.map(item => item.label))];
