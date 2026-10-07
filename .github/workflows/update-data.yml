@@ -1,7 +1,13 @@
 name: update-18-chinabond-yield-curves-and-deploy
 
 on:
-  # Automatic data updates stay off; Pages has a separate deploy-only workflow.
+  schedule:
+    # UTC+8: 18:13, 19:37, 20:23, 21:47, 22:19 Monday to Friday.
+    - cron: '13 10 * * 1-5'
+    - cron: '37 11 * * 1-5'
+    - cron: '23 12 * * 1-5'
+    - cron: '47 13 * * 1-5'
+    - cron: '19 14 * * 1-5'
   workflow_dispatch:
 
 permissions:
@@ -10,108 +16,84 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
-  cancel-in-progress: true
+  group: data-update
+  cancel-in-progress: false
 
 jobs:
-  update-and-deploy:
+  update:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
+    timeout-minutes: 45
+    outputs:
+      revision: ${{ steps.commit.outputs.revision }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
-
-      - name: Set timezone
-        run: sudo timedatectl set-timezone Asia/Shanghai
-
-      - name: Determine data update mode
-        id: data_mode
-        shell: bash
-        run: |
-          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "run_data_update=true" >> "$GITHUB_OUTPUT"
-            echo "Scheduled/manual run: data update enabled"
-          else
-            echo "run_data_update=false" >> "$GITHUB_OUTPUT"
-            echo "Push run: deploy only, data update skipped"
-          fi
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
       - name: Install dependencies
-        run: pip install requests
-
+        run: python -m pip install -r requirements.txt
       - name: Run tests
-        run: python -m unittest discover -s tests -v
-
-      - name: Generate derived files from existing data
-        if: steps.data_mode.outputs.run_data_update != 'true'
-        run: python ci_update.py --derived-only
-
-      - name: Fetch latest yield curve data
-        if: steps.data_mode.outputs.run_data_update == 'true'
-        run: python ci_update.py
-
-      - name: Validate data files
-        if: steps.data_mode.outputs.run_data_update == 'true'
         run: |
-          for f in data/*.json assets/preset_model_data.js; do
-            if [ -f "$f" ]; then
-              SIZE=$(wc -c < "$f")
-              echo "$f size: $SIZE bytes"
-              if [ "$SIZE" -lt 100 ] && [ "$f" != "data/summary.json" ] && [ "$f" != "data/data_makeup_weekend_audit.json" ]; then
-                echo "Invalid data file: $f is smaller than 100 bytes"
-                exit 1
-              fi
-            fi
-          done
+          python -m unittest discover -s tests -v
+          node tests/test_ma_analysis.js
+      - name: Fetch latest yield curve data and rebuild derived files
+        env:
+          CI_STRICT_FETCH: '1'
+        run: python ci_update.py
+      - name: Validate data before saving to GitHub
+        run: |
+          python - <<'PY'
+          import json
+          import math
+          import subprocess
+          from pathlib import Path
+          import ci_update
 
-      - name: Commit and push data updates
-        if: steps.data_mode.outputs.run_data_update == 'true'
+          for path in Path('data').glob('*.json'):
+              json.loads(path.read_text(encoding='utf-8'))
+          for dataset in ci_update.ALL_DATASETS:
+              path = dataset.filename
+              before = json.loads(subprocess.check_output(['git', 'show', f'HEAD:{path}']))
+              after = json.loads(Path(path).read_text(encoding='utf-8'))
+              dates, rates, terms = after['dates'], after['rows'], after['terms']
+              assert dates and dates == sorted(set(dates)), f'{path}: invalid dates'
+              assert len(dates) == len(rates), f'{path}: date/rate mismatch'
+              assert set(before['dates']).issubset(dates), f'{path}: historical dates lost'
+              assert set(before['terms']).issubset(terms), f'{path}: historical terms lost'
+              term_positions = {term: i for i, term in enumerate(terms)}
+              date_positions = {day: i for i, day in enumerate(dates)}
+              for row in rates:
+                  assert len(row) == len(terms), f'{path}: invalid row length'
+                  assert all(value is None or (isinstance(value, (int, float)) and math.isfinite(value)) for value in row), f'{path}: invalid rates'
+              for day, row in zip(before['dates'], before['rows']):
+                  new_row = rates[date_positions[day]]
+                  for term, value in zip(before['terms'], row):
+                      assert value is None or new_row[term_positions[term]] is not None, f'{path}: historical value lost at {day}/{term}'
+              print(f'{path}: {len(dates)} records, latest {dates[-1]}')
+          ci_update.parse_preset_model_js(Path('assets/preset_model_data.js').read_text(encoding='utf-8').replace('window.PRESET_MODEL_DATA', 'window.MODEL_DATA'))
+          PY
+      - name: Commit and push valid data updates
+        id: commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/*.json assets/preset_model_data.js
-
           if git diff --cached --quiet; then
-            echo "No data changes. Checking whether keepalive commit is needed..."
-            LAST_COMMIT_TS=$(git log -1 --format="%ct")
-            NOW_TS=$(date +%s)
-            DIFF_HOURS=$(( (NOW_TS - LAST_COMMIT_TS) / 3600 ))
-            echo "Hours since last commit: ${DIFF_HOURS}"
-            if [ "$DIFF_HOURS" -gt 23 ]; then
-              echo "Creating keepalive commit..."
-              git commit --allow-empty -m "keepalive: $(date +'%Y-%m-%d %H:%M')"
-              git pull --rebase origin main
-              git push
-              echo "Keepalive pushed"
-            else
-              echo "No keepalive needed"
-            fi
+            echo "No data changes; no empty keepalive commit."
           else
-            echo "Data changed. Creating data update commit..."
-            git commit -m "auto update data: $(date +'%Y-%m-%d %H:%M')"
+            git commit -m "auto update yield curve data"
             git pull --rebase origin main
-            git push
-            echo "Data update pushed"
+            git push origin HEAD:main
           fi
+          echo "revision=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: '.'
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+  publish:
+    needs: update
+    uses: ./.github/workflows/deploy-pages.yml
+    with:
+      revision: ${{ needs.update.outputs.revision }}

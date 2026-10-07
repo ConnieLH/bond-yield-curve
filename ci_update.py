@@ -414,6 +414,8 @@ def fetch_searchyc_bundle_result(
                 time.sleep(RETRY_DELAY)
 
     print(f"  {query_date} qxll={qxll}: failed - {last_error}")
+    if os.environ.get("CI_STRICT_FETCH") == "1":
+        raise RuntimeError(f"ChinaBond request failed for {query_date} qxll={qxll}") from last_error
     return {}, False
 
 

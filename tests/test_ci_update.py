@@ -597,5 +597,32 @@ class UpdateTests(unittest.TestCase):
         self.assertNotIn("2025-10-11", audit.get("datasets", {}).get(dataset.key, {}))
 
 
+class StrictFetchTests(unittest.TestCase):
+    def test_ci_network_failure_stops_before_saving_any_dataset(self):
+        dataset = ci_update.ALL_DATASETS[0]
+        state = ci_update.empty_dataset(dataset)
+        state['dates'] = ['2026-09-30']
+        state['rows'] = [[2.0] * len(dataset.terms)]
+        with patch.dict(ci_update.os.environ, {'CI_STRICT_FETCH': '1'}), \
+             patch.object(ci_update, 'ALL_DATASETS', [dataset]), \
+             patch.object(ci_update, 'load_existing', return_value=state), \
+             patch.object(ci_update, 'MAKEUP_WORKDAY_CANDIDATES', set()), \
+             patch.object(ci_update, 'MAX_RETRIES', 1), \
+             patch.object(ci_update.requests, 'post', side_effect=ci_update.requests.ConnectionError('unavailable')), \
+             patch.object(ci_update, 'save_json') as save:
+            with self.assertRaisesRegex(RuntimeError, 'ChinaBond request failed'):
+                ci_update.update_all_datasets('2026-10-01')
+        save.assert_not_called()
+        self.assertEqual(state['dates'], ['2026-09-30'])
+
+    def test_empty_successful_response_is_not_a_network_failure(self):
+        with patch.dict(ci_update.os.environ, {'CI_STRICT_FETCH': '1'}), \
+             patch.object(ci_update.requests, 'post') as post:
+            post.return_value.json.return_value = []
+            result, completed = ci_update.fetch_searchyc_bundle_result([ci_update.CURVES[0]], '1', '2026-10-01')
+        self.assertEqual(result, {})
+        self.assertTrue(completed)
+
+
 if __name__ == "__main__":
     unittest.main()

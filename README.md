@@ -33,7 +33,7 @@ bond-yield-curve/
 ├─ archive/
 │  └─ index.original.html 原重复首页快照，仅作备份
 ├─ tests/                原有自动化测试
-└─ .github/workflows/    Pages 部署及手动更新工作流
+└─ .github/workflows/    Pages 部署及定时抓数工作流
 ```
 
 原项目说明和首页快照保留了整理前的路径，供追溯参考；日常使用根目录的 `index.html`。页面、更新脚本、测试和工作流中的实际文件引用已同步到新位置。Python 缓存已清理，`.gitignore` 会忽略后续生成的缓存和本地虚拟环境。
@@ -79,6 +79,10 @@ python ci_update.py --derived-only
 
 公开仓库：[ConnieLH/bond-yield-curve](https://github.com/ConnieLH/bond-yield-curve)。本地 `origin` 指向该仓库，`upstream` 保留原来源，用于以后同步。
 
-在线页面：[债券收益率曲线](https://connielh.github.io/bond-yield-curve/)。`deploy-pages.yml` 在推送到 `main` 后验证前端并发布现有静态文件，不抓取数据。原 `update-data.yml` 已移除定时及推送触发，并在 GitHub 中保持禁用；如需恢复抓数，先检查数据来源和该工作流的提交、部署步骤。
+在线页面：[债券收益率曲线](https://connielh.github.io/bond-yield-curve/)。`deploy-pages.yml` 在推送到 `main` 后验证前端并发布现有静态文件。
+
+`update-data.yml` 每周一至周五按北京时间 18:13、19:37、20:23、21:47、22:19 抓取九类债券、18份收益率数据，并重算派生结果；也支持在 GitHub Actions 中手动运行。GitHub 的定时任务可能延迟，节假日无新数据时保留原数据。工作流开启 `CI_STRICT_FETCH=1`，中债请求重试仍失败时停止；提交前校验 JSON、日期和数据结构，阻止已有历史日期或有效数据丢失。只有通过验证的数据才会提交并重新发布页面，不创建空的保活提交。外部预定利率模型获取失败时保留旧模型文件并输出告警。
+
+自动更新使用 GitHub 自带的 `GITHUB_TOKEN`，不需要另存个人 token。更新完成后直接调用发布流程，避免机器人提交不触发后续工作流而导致网页未更新。
 
 复制时未发现 `LICENSE` 文件；本说明不替原项目授予复制或再发布许可。
