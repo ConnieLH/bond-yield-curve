@@ -1,11 +1,12 @@
 # 债券收益率曲线：本地使用说明
 
+日常使用：双击 `preview.bat` 打开本地页面，或访问[在线页面](https://connielh.github.io/bond-yield-curve/)。查看计算方法和分析报告请进入 `docs/`；旧版首页和原项目说明统一保存在 `archive/`。
+
 ## 启动页面
 
-在 PowerShell 或命令提示符中运行：
+在 PowerShell 或命令提示符中进入仓库根目录（`bond-yield-curve`），运行：
 
 ```powershell
-cd C:\Users\liuhu\Desktop\AI\codex\projects\bond-yield-curve
 python -m http.server 8000 --bind 127.0.0.1
 ```
 
@@ -29,14 +30,18 @@ bond-yield-curve/
 ├─ data/                 收益率、折现、汇总、实际值和预测 JSON
 ├─ assets/               图表库、Excel 导出库及离线快照脚本
 ├─ docs/                 计算公式、机构观点、触发分析、方法说明
-│  └─ 原项目说明.md      原始技术说明，保留历史内容
-├─ archive/
-│  └─ index.original.html 原重复首页快照，仅作备份
-├─ tests/                原有自动化测试
-└─ .github/workflows/    Pages 部署及定时抓数工作流
+├─ archive/              历史备份，仅供追溯
+│  ├─ index.original.html 旧版首页快照
+│  └─ 原项目说明.md      原始技术说明
+├─ tests/                前端及抓数自动化测试
+├─ .github/workflows/    Pages 部署及定时抓数工作流
+├─ .venv/                本地 Python 依赖环境（隐藏，不提交 Git）
+└─ .git/                 Git 历史和远程配置（隐藏）
 ```
 
-原项目说明和首页快照保留了整理前的路径，供追溯参考；日常使用根目录的 `index.html`。页面、更新脚本、测试和工作流中的实际文件引用已同步到新位置。Python 缓存已清理，`.gitignore` 会忽略后续生成的缓存和本地虚拟环境。
+`archive/` 内的文件保留历史内容和旧路径，供追溯参考；日常使用根目录的 `index.html`。测试缓存已清理，`.gitignore` 会忽略后续生成的缓存和本地虚拟环境。根目录保留首页、启动入口和抓数脚本，以兼容现有本地服务及 GitHub Actions 的路径。
+
+`.venv/` 已安装抓数和本地校验所需依赖；Windows 文件资源管理器开启“显示隐藏的项目”后可查看。数据更新产生的 `.tmp` 文件是写入过程中的临时文件，不作为历史备份保留。
 
 ## 查看现有数据与更新数据
 
@@ -52,6 +57,12 @@ python ci_update.py
 ```
 
 脚本依赖 `requests`，直接请求中债收益率接口及外部预定利率模型数据；当前脚本不依赖 `akshare`。执行会改写本地数据文件，是否抓取成功取决于数据源可用性。
+
+本机也可直接使用已准备好的隔离环境，无需先激活：
+
+```powershell
+.\.venv\Scripts\python.exe ci_update.py
+```
 
 只想用现有收益率数据重算派生结果时：
 
